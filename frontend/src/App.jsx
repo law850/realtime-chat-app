@@ -8,7 +8,7 @@ function App() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [readyState, setReadyState] = useState(0);
-  const [replyTo, setReplyTo] = useState(null); // <-- NEW: State for replies
+  const [replyTo, setReplyTo] = useState(null);
   
   const ws = useRef(null);
   const chatEndRef = useRef(null);
@@ -56,11 +56,11 @@ function App() {
     ws.current.send(JSON.stringify({
       message: message,
       username: username,
-      reply_to: replyTo ? replyTo.id : null, // <-- NEW: Send reply ID
+      reply_to: replyTo ? replyTo.id : null,
     }));
 
     setMessage('');
-    setReplyTo(null); // <-- NEW: Clear reply after sending
+    setReplyTo(null);
   };
 
   const handleDeleteMessage = (id) => {
@@ -79,6 +79,33 @@ function App() {
         id: id,
         message: newMessage
       }));
+    }
+  };
+
+  // NEW: File Upload Function
+  const handleFileUpload = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/upload/', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      
+      if (data.url) {
+        // Send the file URL as a message
+        ws.current.send(JSON.stringify({
+          message: `📎 File: ${data.url}`,
+          username: username,
+        }));
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
     }
   };
 
@@ -193,7 +220,7 @@ function App() {
             
             {messages.map((msg, index) => {
               const isMe = msg.username === username;
-              const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null; // <-- NEW
+              const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
 
               return (
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -206,7 +233,7 @@ function App() {
                       {msg.id && (
                         <>
                           <button 
-                            onClick={() => setReplyTo(msg)} // <-- NEW: Set reply state
+                            onClick={() => setReplyTo(msg)}
                             className="text-indigo-400 hover:text-indigo-300 transition text-[10px] font-bold"
                           >
                             [Reply]
@@ -221,7 +248,6 @@ function App() {
                       )}
                     </div>
 
-                    {/* Reply Preview Bubble */}
                     {repliedMessage && (
                       <div className="mb-1 px-3 py-1 bg-slate-800/50 border-l-2 border-indigo-500 rounded text-xs text-slate-400 truncate max-w-full">
                         Replying to {repliedMessage.username}: "{repliedMessage.message}"
@@ -241,7 +267,6 @@ function App() {
           </div>
 
           <div className="p-6 bg-slate-900 border-t border-slate-800">
-            {/* Replying to bar */}
             {replyTo && (
               <div className="flex justify-between items-center px-4 py-2 bg-slate-800 border border-slate-700 rounded-t-xl text-sm text-slate-300 mb-2">
                 <span>Replying to <strong>{replyTo.username}</strong>: {replyTo.message.substring(0, 30)}...</span>
@@ -250,6 +275,18 @@ function App() {
             )}
             
             <form onSubmit={handleSendMessage} className="flex gap-4">
+              <input 
+                type="file" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                id="file-upload" 
+              />
+              <label 
+                htmlFor="file-upload" 
+                className="cursor-pointer px-4 py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition"
+              >
+                📎
+              </label>
               <input 
                 type="text" 
                 placeholder={`Message #${room}...`}
