@@ -6,5 +6,8 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    # NEW: Link to the message being replied to
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+
     def __str__(self):
         return f"{self.username}: {self.content[:20]}"
