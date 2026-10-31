@@ -5,7 +5,9 @@ from .models import Message
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_group_name = 'chat_room'
+        # Get the room name from the URL
+        self.room_name = self.scope['url_route']['kwargs']['room_name']
+        self.room_group_name = f'chat_{self.room_name}'
 
         # Join room group
         await self.channel_layer.group_add(
@@ -15,7 +17,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-        # Send the last 50 messages to the user who just connected
+        # Send the history for this specific room
         await self.send_history()
 
     async def disconnect(self, close_code):
@@ -29,8 +31,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message = text_data_json['message']
         username = text_data_json.get('username', 'Anonymous')
 
-        # Save the message to the database
-        await self.save_message(username, message)
+        # Save the message to the database with the room name
+        await self.save_message(username, self.room_name, message)
 
         # Send message to room group
         await self.channel_layer.group_send(
@@ -38,29 +40,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'chat_message',
                 'message': message,
-                'username': username
+                'username': username,
+                'room': self.room_name
             }
         )
 
     async def chat_message(self, event):
         message = event['message']
         username = event['username']
+        room = event['room']
 
         await self.send(text_data=json.dumps({
             'message': message,
-            'username': username
+            'username': username,
+            'room': room
         }))
 
-    # --- HELPER FUNCTIONS ---
-
     @database_sync_to_async
-    def save_message(self, username, content):
-        Message.objects.create(username=username, content=content)
+    def save_message(self, username, room, content):
+        Message.objects.create(username=username, room=room, content=content)
 
     @database_sync_to_async
     def get_history(self):
-        # Get the last 50 messages, order them oldest to newest
-        messages = list(Message.objects.order_by('-timestamp')[:50].values('username', 'content'))
+        # Get history for this specific room only
+        messages = list(Message.objects.filter(room=self.room_name).order_by('-timestamp')[:50].values('username', 'content'))
         return messages[::-1] 
 
     async def send_history(self):
@@ -68,5 +71,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         for msg in history:
             await self.send(text_data=json.dumps({
                 'message': msg['content'],
-                'username': msg['username']
+                'username': msg['username'],
+                'room': self.room_name
             }))
