@@ -9,18 +9,23 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [readyState, setReadyState] = useState(0);
   const [replyTo, setReplyTo] = useState(null);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [activeUsers, setActiveUsers] = useState([]); 
+  const [showUserList, setShowUserList] = useState(false); 
+  const [unreadCounts, setUnreadCounts] = useState({});
   
   const ws = useRef(null);
   const chatEndRef = useRef(null);
 
   const [rooms, setRooms] = useState(['general', 'tech', 'gaming', 'random']);
 
+  // Main Chat WebSocket
   useEffect(() => {
     if (!isLoggedIn) return;
 
     if (ws.current) ws.current.close();
 
-    ws.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${room}/`);
+    ws.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${room}/?username=${username}`);
 
     ws.current.onopen = () => setReadyState(1);
     ws.current.onclose = () => setReadyState(3);
@@ -35,6 +40,25 @@ function App() {
         setMessages((prev) => 
           prev.map((msg) => msg.id === data.id ? { ...msg, message: data.message } : msg)
         );
+      } else if (data.action === 'typing') {
+        setTypingUsers(prev => {
+          const newState = { ...prev };
+          if (data.is_typing) {
+            newState[data.username] = true;
+          } else {
+            delete newState[data.username];
+          }
+          return newState;
+        });
+      } else if (data.action === 'user_list') {
+        setActiveUsers(data.users);
+      } else if (data.action === 'unread') { // <-- NEW: Handle Global Unread
+        if (data.username !== username && data.room !== room) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [data.room]: (prev[data.room] || 0) + 1
+          }));
+        }
       } else {
         setMessages((prev) => [...prev, data]);
       }
@@ -49,6 +73,28 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleTyping = (e) => {
+    setMessage(e.target.value);
+    
+    if (readyState !== 1) return;
+    
+    ws.current.send(JSON.stringify({
+      action: 'typing',
+      username: username,
+      is_typing: true
+    }));
+
+    if (window.typingTimeout) clearTimeout(window.typingTimeout);
+
+    window.typingTimeout = setTimeout(() => {
+      ws.current.send(JSON.stringify({
+        action: 'typing',
+        username: username,
+        is_typing: false
+      }));
+    }, 2000);
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (message.trim() === '' || readyState !== 1) return;
@@ -61,6 +107,12 @@ function App() {
 
     setMessage('');
     setReplyTo(null);
+    
+    ws.current.send(JSON.stringify({
+      action: 'typing',
+      username: username,
+      is_typing: false
+    }));
   };
 
   const handleDeleteMessage = (id) => {
@@ -82,7 +134,6 @@ function App() {
     }
   };
 
-  // NEW: File Upload Function
   const handleFileUpload = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -98,7 +149,6 @@ function App() {
       const data = await response.json();
       
       if (data.url) {
-        // Send the file URL as a message
         ws.current.send(JSON.stringify({
           message: `📎 File: ${data.url}`,
           username: username,
@@ -169,11 +219,20 @@ function App() {
             {rooms.map((r) => (
               <button 
                 key={r}
-                onClick={() => { setRoom(r); setMessages([]); setReplyTo(null); }}
+                onClick={() => { 
+                  setRoom(r); 
+                  setMessages([]); 
+                  setReplyTo(null); 
+                  setUnreadCounts(prev => ({ ...prev, [r]: 0 })); // Clear badge on click
+                }}
                 className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center justify-between ${room === r ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'}`}
               >
                 <span className="truncate"># {r}</span>
-                {room === r && <span className="w-2 h-2 rounded-full bg-indigo-500"></span>}
+                {unreadCounts[r] > 0 && room !== r && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {unreadCounts[r]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -203,10 +262,40 @@ function App() {
 
         {/* MAIN CHAT AREA */}
         <div className="flex-1 flex flex-col bg-slate-900">
-          <div className="h-20 px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm">
+          
+          {/* HEADER with Online Pill */}
+          <div className="h-20 px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm relative">
             <div>
               <h2 className="text-xl font-bold text-white"># {room}</h2>
               <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
+            </div>
+
+            {/* ONLINE USERS PILL */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowUserList(!showUserList)}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-full transition"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="text-sm font-medium text-slate-200">{activeUsers.length} Online</span>
+              </button>
+
+              {/* DROPDOWN LIST */}
+              {showUserList && (
+                <div className="absolute right-0 top-12 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 z-50">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Active Members</h3>
+                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                    {activeUsers.map((user, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold ${getAvatarColor(user)}`}>
+                          {user.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm text-slate-300">{user}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -229,7 +318,10 @@ function App() {
                   </div>
                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
                     <div className="flex items-center gap-2 mb-1 px-1">
-                      <span className="text-xs text-slate-400">{msg.username}</span>
+                      <span className="text-xs text-slate-400 font-bold">{msg.username}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                       {msg.id && (
                         <>
                           <button 
@@ -254,15 +346,45 @@ function App() {
                       </div>
                     )}
 
-                    <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed ${
+                    <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed chat-bubble ${
                       isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm'
                     }`}>
-                      {msg.message}
+                      {msg.message.includes('📎 File:') ? (
+                        /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.message) ? (
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs opacity-75">Sent an image:</span>
+                            <img 
+                              src={`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`} 
+                              alt="Uploaded" 
+                              className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition"
+                              onClick={() => window.open(`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`, '_blank')}
+                            />
+                          </div>
+                        ) : (
+                          <a 
+                            href={`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 underline hover:text-white"
+                          >
+                            📄 Click to download/view file
+                          </a>
+                        )
+                      ) : (
+                        msg.message
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+            
+            {Object.keys(typingUsers).filter(u => u !== username).length > 0 && (
+              <div className="text-xs text-slate-500 italic px-4 pb-2">
+                {Object.keys(typingUsers).filter(u => u !== username).join(', ')} is typing...
+              </div>
+            )}
+            
             <div ref={chatEndRef} />
           </div>
 
@@ -274,7 +396,7 @@ function App() {
               </div>
             )}
             
-            <form onSubmit={handleSendMessage} className="flex gap-4">
+            <form onSubmit={handleSendMessage} className="flex gap-4 items-end">
               <input 
                 type="file" 
                 onChange={handleFileUpload} 
@@ -283,21 +405,29 @@ function App() {
               />
               <label 
                 htmlFor="file-upload" 
-                className="cursor-pointer px-4 py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition"
+                className="cursor-pointer px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition h-[52px]"
               >
                 📎
               </label>
-              <input 
-                type="text" 
+              
+              <textarea 
                 placeholder={`Message #${room}...`}
-                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white"
+                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar"
                 value={message} 
-                onChange={e => setMessage(e.target.value)} 
+                onChange={handleTyping}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); 
+                    handleSendMessage(e); 
+                  }
+                }}
                 disabled={readyState !== 1}
+                rows={1}
               />
+              
               <button 
                 type="submit" 
-                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold transition text-white disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold transition text-white disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-2 h-[52px]"
                 disabled={readyState !== 1}
               >
                 Send

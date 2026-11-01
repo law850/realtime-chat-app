@@ -6,3 +6,9 @@ body {
   background-color: #0f172a; /* Dark slate background */
   color: #f8fafc;
 }
+.chat-bubble {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
