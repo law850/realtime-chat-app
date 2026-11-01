@@ -2,9 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 
 function App() {
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [token, setToken] = useState(localStorage.getItem('access_token') || null);
+  
   const [room, setRoom] = useState('general');
   const [newRoom, setNewRoom] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [readyState, setReadyState] = useState(0);
@@ -18,6 +23,15 @@ function App() {
   const chatEndRef = useRef(null);
 
   const [rooms, setRooms] = useState(['general', 'tech', 'gaming', 'random']);
+
+  // Auto-login if token exists
+  useEffect(() => {
+    if (token) {
+      // We could fetch user info here, but for simplicity, we just assume the token is valid.
+      // In a real app, you'd verify the token with the backend.
+      setIsLoggedIn(true);
+    }
+  }, [token]);
 
   // Main Chat WebSocket
   useEffect(() => {
@@ -52,7 +66,7 @@ function App() {
         });
       } else if (data.action === 'user_list') {
         setActiveUsers(data.users);
-      } else if (data.action === 'unread') { // <-- NEW: Handle Global Unread
+      } else if (data.action === 'unread') {
         if (data.username !== username && data.room !== room) {
           setUnreadCounts(prev => ({
             ...prev,
@@ -72,6 +86,50 @@ function App() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    
+    const endpoint = isRegistering ? 'register' : 'login';
+    const url = `http://127.0.0.1:8000/api/${endpoint}/`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await res.json();
+
+      if (res.ok) {
+        if (isRegistering) {
+          // Registration successful, now log them in automatically
+          setIsRegistering(false);
+          setAuthError('Registration successful! Please log in.');
+        } else {
+          // Login successful
+          localStorage.setItem('access_token', data.access);
+          setToken(data.access);
+          setIsLoggedIn(true);
+        }
+      } else {
+        setAuthError(data.error || data.detail || 'Authentication failed');
+      }
+    } catch (err) {
+      setAuthError('Server error. Please try again.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    setToken(null);
+    setIsLoggedIn(false);
+    setUsername('');
+    setPassword('');
+    if (ws.current) ws.current.close();
+  };
 
   const handleTyping = (e) => {
     setMessage(e.target.value);
@@ -177,31 +235,67 @@ function App() {
 
   const connectionStatus = readyState === 1 ? 'Online' : readyState === 0 ? 'Connecting...' : 'Offline';
 
+  // --- LOGIN / REGISTER SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
         <div className="bg-slate-900 p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-          <h2 className="text-4xl font-extrabold mb-2 text-white">Welcome Back</h2>
-          <p className="text-slate-400 mb-8">Enter a username to join the conversation.</p>
-          <form onSubmit={(e) => { e.preventDefault(); if(username.trim()) setIsLoggedIn(true); }} className="flex flex-col gap-4">
+          
+          <h2 className="text-4xl font-extrabold mb-2 text-white">
+            {isRegistering ? 'Create Account' : 'Welcome Back'}
+          </h2>
+          <p className="text-slate-400 mb-8">
+            {isRegistering ? 'Sign up to join the chat.' : 'Log in to your account.'}
+          </p>
+          
+          {authError && <p className="text-red-400 mb-4 text-sm">{authError}</p>}
+          
+          <form onSubmit={handleAuth} className="flex flex-col gap-4">
             <input 
               type="text" 
-              placeholder="Your username..." 
+              placeholder="Username" 
               className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white"
               value={username} 
               onChange={e => setUsername(e.target.value)} 
               required 
             />
+            <input 
+              type="password" 
+              placeholder="Password" 
+              className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white"
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              required 
+            />
             <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-lg transition text-white shadow-lg shadow-indigo-500/30">
-              Join Chat
+              {isRegistering ? 'Register' : 'Login'}
             </button>
           </form>
+
+          <div className="mt-6">
+            <button 
+              onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }}
+              className="text-sm text-indigo-400 hover:text-indigo-300 transition"
+            >
+              {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
+            </button>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-slate-800 text-center">
+            <p className="text-xs text-slate-500">
+              Built by <span className="text-indigo-400 font-bold">Simiyu Lawrence</span>
+            </p>
+            <p className="text-[10px] text-slate-600 mt-1">
+              simiyulawrence176@gmail.com
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // --- CHAT ROOM UI ---
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
       <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex overflow-hidden h-[85vh]">
@@ -223,7 +317,7 @@ function App() {
                   setRoom(r); 
                   setMessages([]); 
                   setReplyTo(null); 
-                  setUnreadCounts(prev => ({ ...prev, [r]: 0 })); // Clear badge on click
+                  setUnreadCounts(prev => ({ ...prev, [r]: 0 })); 
                 }}
                 className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center justify-between ${room === r ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'}`}
               >
@@ -247,30 +341,31 @@ function App() {
             />
           </form>
           
-          <div className="mt-6 pt-6 border-t border-slate-800 flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
-              {username.charAt(0).toUpperCase()}
+          <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
+                {username.charAt(0).toUpperCase()}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-sm font-bold text-white truncate">{username}</p>
+                <p className="text-xs text-green-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> {connectionStatus}
+                </p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-white truncate">{username}</p>
-              <p className="text-xs text-green-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> {connectionStatus}
-              </p>
-            </div>
+            <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold">Logout</button>
           </div>
         </div>
 
         {/* MAIN CHAT AREA */}
         <div className="flex-1 flex flex-col bg-slate-900">
           
-          {/* HEADER with Online Pill */}
           <div className="h-20 px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm relative">
             <div>
               <h2 className="text-xl font-bold text-white"># {room}</h2>
               <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
             </div>
 
-            {/* ONLINE USERS PILL */}
             <div className="relative">
               <button 
                 onClick={() => setShowUserList(!showUserList)}
@@ -280,7 +375,6 @@ function App() {
                 <span className="text-sm font-medium text-slate-200">{activeUsers.length} Online</span>
               </button>
 
-              {/* DROPDOWN LIST */}
               {showUserList && (
                 <div className="absolute right-0 top-12 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 z-50">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Active Members</h3>
