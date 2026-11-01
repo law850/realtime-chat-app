@@ -3,8 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [question, setQuestion] = useState('What is your favorite color?');
+  const [answer, setAnswer] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [authError, setAuthError] = useState('');
   const [token, setToken] = useState(localStorage.getItem('access_token') || null);
   
@@ -24,16 +27,12 @@ function App() {
 
   const [rooms, setRooms] = useState(['general', 'tech', 'gaming', 'random']);
 
-  // Auto-login if token exists
   useEffect(() => {
     if (token) {
-      // We could fetch user info here, but for simplicity, we just assume the token is valid.
-      // In a real app, you'd verify the token with the backend.
       setIsLoggedIn(true);
     }
   }, [token]);
 
-  // Main Chat WebSocket
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -95,27 +94,58 @@ function App() {
     const url = `http://127.0.0.1:8000/api/${endpoint}/`;
 
     try {
+      const payload = isRegistering 
+        ? { username, password, question, answer } 
+        : { username, password };
+
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify(payload)
       });
       
       const data = await res.json();
 
       if (res.ok) {
         if (isRegistering) {
-          // Registration successful, now log them in automatically
           setIsRegistering(false);
           setAuthError('Registration successful! Please log in.');
+          setPassword('');
+          setAnswer('');
         } else {
-          // Login successful
           localStorage.setItem('access_token', data.access);
           setToken(data.access);
           setIsLoggedIn(true);
         }
       } else {
-        setAuthError(data.error || data.detail || 'Authentication failed');
+        setAuthError(data.error || data.detail || JSON.stringify(data) || 'Authentication failed');
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setAuthError('Server error. Please check the console for details.');
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/reset-password/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, answer, new_password: password })
+      });
+      
+      const data = await res.json();
+
+      if (res.ok) {
+        setAuthError('Password reset successful! Please log in.');
+        setIsResetting(false);
+        setPassword('');
+        setAnswer('');
+      } else {
+        setAuthError(data.error || 'Failed to reset password');
       }
     } catch (err) {
       setAuthError('Server error. Please try again.');
@@ -235,7 +265,7 @@ function App() {
 
   const connectionStatus = readyState === 1 ? 'Online' : readyState === 0 ? 'Connecting...' : 'Offline';
 
-  // --- LOGIN / REGISTER SCREEN ---
+  // --- LOGIN / REGISTER / RESET SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
@@ -243,15 +273,15 @@ function App() {
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
           
           <h2 className="text-4xl font-extrabold mb-2 text-white">
-            {isRegistering ? 'Create Account' : 'Welcome Back'}
+            {isResetting ? 'Reset Password' : isRegistering ? 'Create Account' : 'Welcome Back'}
           </h2>
           <p className="text-slate-400 mb-8">
-            {isRegistering ? 'Sign up to join the chat.' : 'Log in to your account.'}
+            {isResetting ? 'Enter your username, security answer, and new password.' : isRegistering ? 'Sign up to join the chat.' : 'Log in to your account.'}
           </p>
           
           {authError && <p className="text-red-400 mb-4 text-sm">{authError}</p>}
           
-          <form onSubmit={handleAuth} className="flex flex-col gap-4">
+          <form onSubmit={isResetting ? handleResetPassword : handleAuth} className="flex flex-col gap-4">
             <input 
               type="text" 
               placeholder="Username" 
@@ -260,26 +290,69 @@ function App() {
               onChange={e => setUsername(e.target.value)} 
               required 
             />
+
+            {isRegistering && (
+              <select 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                value={question} 
+                onChange={e => setQuestion(e.target.value)}
+              >
+                <option>What is your favorite color?</option>
+                <option>What is your mother's maiden name?</option>
+                <option>What was your first pet's name?</option>
+              </select>
+            )}
+
+            {(isRegistering || isResetting) && (
+              <input 
+                type="text" 
+                placeholder="Security Answer" 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 transition text-white"
+                value={answer} 
+                onChange={e => setAnswer(e.target.value)} 
+                required 
+              />
+            )}
+
             <input 
               type="password" 
-              placeholder="Password" 
+              placeholder={isResetting ? "New Password" : "Password"} 
               className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white"
               value={password} 
               onChange={e => setPassword(e.target.value)} 
               required 
             />
+
             <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-lg transition text-white shadow-lg shadow-indigo-500/30">
-              {isRegistering ? 'Register' : 'Login'}
+              {isResetting ? 'Reset Password' : isRegistering ? 'Register' : 'Login'}
             </button>
           </form>
 
-          <div className="mt-6">
-            <button 
-              onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }}
-              className="text-sm text-indigo-400 hover:text-indigo-300 transition"
-            >
-              {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
-            </button>
+          <div className="mt-6 flex flex-col gap-2">
+            {!isResetting && (
+              <>
+                <button 
+                  onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }}
+                  className="text-sm text-indigo-400 hover:text-indigo-300 transition"
+                >
+                  {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
+                </button>
+                <button 
+                  onClick={() => { setIsResetting(true); setAuthError(''); }}
+                  className="text-sm text-slate-500 hover:text-slate-400 transition"
+                >
+                  Forgot your password?
+                </button>
+              </>
+            )}
+            {isResetting && (
+              <button 
+                onClick={() => { setIsResetting(false); setAuthError(''); }}
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition"
+              >
+                Back to Login
+              </button>
+            )}
           </div>
 
           <div className="mt-8 pt-6 border-t border-slate-800 text-center">
