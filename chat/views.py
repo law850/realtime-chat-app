@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,15 +21,8 @@ def register_user(request):
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Create the user
     user = User.objects.create_user(username=username, password=password)
-    
-    # Create the user profile with the security question
-    UserProfile.objects.create(
-        user=user, 
-        security_question=question, 
-        security_answer=answer.lower()
-    )
+    UserProfile.objects.create(user=user, security_question=question, security_answer=answer.lower())
     
     return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
 
@@ -45,7 +39,6 @@ def reset_password(request):
         user = User.objects.get(username=username)
         profile = UserProfile.objects.get(user=user)
         
-        # Check if the security answer matches
         if profile.security_answer != answer.lower():
             return Response({'error': 'Incorrect security answer'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -54,6 +47,24 @@ def reset_password(request):
         return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+def change_password(request):
+    username = request.data.get('username')
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+
+    if not username or not old_password or not new_password:
+        return Response({'error': 'Please fill all fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = authenticate(username=username, password=old_password)
+    
+    if user is not None:
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': 'Incorrect current password'}, status=status.HTTP_401_UNAUTHORIZED)
 
 @csrf_exempt
 def upload_file(request):

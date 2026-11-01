@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [question, setQuestion] = useState('What is your favorite color?');
   const [answer, setAnswer] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -22,16 +23,31 @@ function App() {
   const [showUserList, setShowUserList] = useState(false); 
   const [unreadCounts, setUnreadCounts] = useState({});
   
+  // Settings States
+  const [showSettings, setShowSettings] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSuccess, setSettingsSuccess] = useState('');
+  
   const ws = useRef(null);
   const chatEndRef = useRef(null);
 
   const [rooms, setRooms] = useState(['general', 'tech', 'gaming', 'random']);
 
+  // Load token AND username on startup
   useEffect(() => {
-    if (token) {
+    const savedToken = localStorage.getItem('access_token');
+    const savedUsername = localStorage.getItem('username');
+    
+    if (savedToken) {
+      setToken(savedToken);
+      if (savedUsername) {
+        setUsername(savedUsername);
+      }
       setIsLoggedIn(true);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -90,6 +106,11 @@ function App() {
     e.preventDefault();
     setAuthError('');
     
+    if (isRegistering && password !== confirmPassword) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
     const endpoint = isRegistering ? 'register' : 'login';
     const url = `http://127.0.0.1:8000/api/${endpoint}/`;
 
@@ -111,9 +132,11 @@ function App() {
           setIsRegistering(false);
           setAuthError('Registration successful! Please log in.');
           setPassword('');
+          setConfirmPassword('');
           setAnswer('');
         } else {
           localStorage.setItem('access_token', data.access);
+          localStorage.setItem('username', username); // SAVE USERNAME
           setToken(data.access);
           setIsLoggedIn(true);
         }
@@ -152,8 +175,47 @@ function App() {
     }
   };
 
+  // UPDATED: Shows success message for 3 seconds before closing
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setSettingsError('');
+    setSettingsSuccess('');
+
+    if (newPassword !== confirmPassword) {
+      setSettingsError('New passwords do not match.');
+      return;
+    }
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/change-password/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, old_password: oldPassword, new_password: newPassword })
+      });
+      
+      const data = await res.json();
+
+      if (res.ok) {
+        setSettingsSuccess('Password changed successfully!');
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        // Keep modal open for 3 seconds so user sees the message
+        setTimeout(() => {
+          setShowSettings(false);
+          setSettingsSuccess(''); 
+        }, 3000);
+      } else {
+        setSettingsError(data.error || 'Failed to change password');
+      }
+    } catch (err) {
+      setSettingsError('Server error. Please try again.');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('username'); // REMOVE USERNAME
     setToken(null);
     setIsLoggedIn(false);
     setUsername('');
@@ -323,6 +385,17 @@ function App() {
               required 
             />
 
+            {isRegistering && (
+              <input 
+                type="password" 
+                placeholder="Confirm Password" 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white"
+                value={confirmPassword} 
+                onChange={e => setConfirmPassword(e.target.value)} 
+                required 
+              />
+            )}
+
             <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-lg transition text-white shadow-lg shadow-indigo-500/30">
               {isResetting ? 'Reset Password' : isRegistering ? 'Register' : 'Login'}
             </button>
@@ -426,7 +499,10 @@ function App() {
                 </p>
               </div>
             </div>
-            <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold">Logout</button>
+            <div className="flex flex-col gap-1">
+              <button onClick={() => setShowSettings(true)} className="text-indigo-400 hover:text-indigo-300 text-xs font-bold text-left">Settings</button>
+              <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold text-left">Logout</button>
+            </div>
           </div>
         </div>
 
@@ -605,6 +681,52 @@ function App() {
         </div>
 
       </div>
+
+      {/* SETTINGS MODAL */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Change Password</h2>
+              <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl">✕</button>
+            </div>
+            
+            {settingsError && <p className="text-red-400 mb-4 text-sm text-center">{settingsError}</p>}
+            {settingsSuccess && <p className="text-green-400 mb-4 text-sm text-center">{settingsSuccess}</p>}
+            
+            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+              <input 
+                type="password" 
+                placeholder="Current Password" 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                value={oldPassword} 
+                onChange={e => setOldPassword(e.target.value)} 
+                required 
+              />
+              <input 
+                type="password" 
+                placeholder="New Password" 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                value={newPassword} 
+                onChange={e => setNewPassword(e.target.value)} 
+                required 
+              />
+              <input 
+                type="password" 
+                placeholder="Confirm New Password" 
+                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                value={confirmPassword} 
+                onChange={e => setConfirmPassword(e.target.value)} 
+                required 
+              />
+              <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">
+                Update Password
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
