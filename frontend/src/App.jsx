@@ -68,7 +68,7 @@ function App() {
     if (!currentUsername) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/rooms/?username=${currentUsername}`);
+      const res = await fetch(`http://tubonge-backend-0d7b.onrender.com/api/rooms/?username=${currentUsername}`);
       const data = await res.json();
       if (data.rooms) {
         setRooms(data.rooms);
@@ -92,7 +92,7 @@ function App() {
     if (ws.current) ws.current.close();
 
     const targetRoom = room || 'general';
-    ws.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${targetRoom}/?username=${username}`);
+    ws.current = new WebSocket(`ws://tubonge-backend-0d7b.onrender.com/ws/chat/${targetRoom}/?username=${username}`);
 
     ws.current.onopen = () => setReadyState(1);
     ws.current.onclose = () => setReadyState(3);
@@ -158,7 +158,7 @@ function App() {
     }
 
     const endpoint = isRegistering ? 'register' : 'login';
-    const url = `http://127.0.0.1:8000/api/${endpoint}/`;
+    const url = `http://tubonge-backend-0d7b.onrender.com/api/${endpoint}/`;
 
     try {
       const payload = isRegistering 
@@ -200,7 +200,7 @@ function App() {
     setAuthError('');
     
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/reset-password/', {
+      const res = await fetch('http://tubonge-backend-0d7b.onrender.com/api/reset-password/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, answer, new_password: password })
@@ -232,7 +232,7 @@ function App() {
     }
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/change-password/', {
+      const res = await fetch('http://tubonge-backend-0d7b.onrender.com/api/change-password/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, old_password: oldPassword, new_password: newPassword })
@@ -259,7 +259,7 @@ function App() {
 
   const checkAdminStatus = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/check-admin/?username=${username}&room=${room}`);
+      const res = await fetch(`http://tubonge-backend-0d7b.onrender.com/api/check-admin/?username=${username}&room=${room}`);
       const data = await res.json();
       setIsAdmin(data.is_admin);
       if (data.is_admin) {
@@ -275,7 +275,7 @@ function App() {
 
   const fetchRoomMembers = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/room-members/?room=${room}`);
+      const res = await fetch(`http://tubonge-backend-0d7b.onrender.com/api/room-members/?room=${room}`);
       const data = await res.json();
       setRoomMembers(data.members);
     } catch (err) {
@@ -288,7 +288,7 @@ function App() {
     setManageError('');
     setManageSuccess('');
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/add-member/', {
+      const res = await fetch('http://tubonge-backend-0d7b.onrender.com/api/add-member/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_username: username, room_name: room, new_member_username: newMemberName })
@@ -311,7 +311,7 @@ function App() {
     setManageError('');
     setManageSuccess('');
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/remove-member/', {
+      const res = await fetch('http://tubonge-backend-0d7b.onrender.com/api/remove-member/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_username: username, room_name: room, member_to_remove: memberName })
@@ -407,7 +407,7 @@ function App() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/upload/', {
+      const response = await fetch('http://tubonge-backend-0d7b.onrender.com/api/upload/', {
         method: 'POST',
         body: formData,
       });
@@ -430,7 +430,7 @@ function App() {
     if (!formattedRoom) return;
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/create-room/', {
+      const res = await fetch('http://tubonge-backend-0d7b.onrender.com/api/create-room/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username, room_name: formattedRoom })
@@ -800,7 +800,7 @@ function App() {
             
             const dmRoomName = [username, targetUser].sort().join('-');
             
-            fetch('http://127.0.0.1:8000/api/create-room/', {
+            fetch('http://tubonge-backend-0d7b.onrender.com/api/create-room/', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ username: username, room_name: dmRoomName })
@@ -814,7 +814,7 @@ function App() {
             })
             .then(data => {
               if (data.room_name) {
-                fetch('http://127.0.0.1:8000/api/add-member/', {
+                fetch('http://tubonge-backend-0d7b.onrender.com/api/add-member/', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
@@ -984,15 +984,15 @@ function App() {
                           <div className="flex flex-col gap-2">
                             <span className="text-xs opacity-75">Sent an image:</span>
                             <img 
-                              src={`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`} 
+                              src={`http://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`} 
                               alt="Uploaded" 
                               className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition"
-                              onClick={() => window.open(`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`, '_blank')}
+                              onClick={() => window.open(`http://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`, '_blank')}
                             />
                           </div>
                         ) : (
                           <a 
-                            href={`http://127.0.0.1:8000${msg.message.replace('📎 File: ', '')}`} 
+                            href={`http://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 underline hover:text-white"

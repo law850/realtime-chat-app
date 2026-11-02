@@ -67,8 +67,6 @@ WSGI_APPLICATION = 'chatcore.wsgi.application'
 
 
 # Database
-# This tells Django to use the DATABASE_URL environment variable (Neon) on Render, 
-# and fallback to SQLite on your local computer.
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR}/db.sqlite3',
@@ -126,7 +124,6 @@ ASGI_APPLICATION = 'chatcore.asgi.application'
 
 
 # Channel Layers
-# Uses Redis on Render (via the REDIS_URL environment variable), and in-memory locally
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')
 
 if REDIS_URL:
@@ -139,7 +136,6 @@ if REDIS_URL:
         },
     }
 else:
-    # Fallback for local development if Redis isn't running
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer"
@@ -154,5 +150,17 @@ REST_FRAMEWORK = {
     )
 }
 
-# CORS
+# --- CORS AND CSRF SETTINGS ---
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Explicitly allow your Vercel app and localhost to talk to the backend
+CORS_ALLOWED_ORIGINS = [
+    "https://tubonge-app.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://tubonge-app.vercel.app",
+    "https://tubonge-backend-0d7b.onrender.com",
+]

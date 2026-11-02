@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from .models import UserProfile, Room, RoomMember
 
+@csrf_exempt
 @api_view(['POST'])
 def register_user(request):
     username = request.data.get('username')
@@ -26,6 +27,7 @@ def register_user(request):
     
     return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
 
+@csrf_exempt
 @api_view(['POST'])
 def reset_password(request):
     username = request.data.get('username')
@@ -48,6 +50,7 @@ def reset_password(request):
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+@csrf_exempt
 @api_view(['POST'])
 def change_password(request):
     username = request.data.get('username')
@@ -104,6 +107,7 @@ def get_room_members(request):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
+@csrf_exempt
 @api_view(['POST'])
 def add_member(request):
     admin_username = request.data.get('admin_username')
@@ -130,6 +134,7 @@ def add_member(request):
     except RoomMember.DoesNotExist:
         return Response({'error': 'You are not in this room'}, status=status.HTTP_403_FORBIDDEN)
 
+@csrf_exempt
 @api_view(['POST'])
 def remove_member(request):
     admin_username = request.data.get('admin_username')
@@ -158,6 +163,7 @@ def remove_member(request):
 
 # --- CREATE ROOM & FETCH ROOMS ---
 
+@csrf_exempt
 @api_view(['POST'])
 def create_room(request):
     username = request.data.get('username')
