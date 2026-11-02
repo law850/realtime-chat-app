@@ -12,10 +12,8 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [token, setToken] = useState(localStorage.getItem('access_token') || null);
   
-  // --- NEW: State for Landing Page ---
   const [showLanding, setShowLanding] = useState(true);
 
-  // --- NEW: State for Custom DM Modal (THIS WAS MISSING) ---
   const [showDmModal, setShowDmModal] = useState(false);
   const [dmTargetUser, setDmTargetUser] = useState('');
 
@@ -32,14 +30,12 @@ function App() {
   
   const [hiddenMessages, setHiddenMessages] = useState([]);
 
-  // Settings States
   const [showSettings, setShowSettings] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
 
-  // Admin/Group States
   const [isAdmin, setIsAdmin] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
   const [roomMembers, setRoomMembers] = useState([]);
@@ -52,7 +48,6 @@ function App() {
 
   const [rooms, setRooms] = useState(['general']);
 
-  // 1. Load user on startup
   useEffect(() => {
     const savedToken = localStorage.getItem('access_token');
     const savedUsername = localStorage.getItem('username');
@@ -66,7 +61,6 @@ function App() {
     }
   }, []);
 
-  // 2. Reusable function to fetch rooms
   const fetchRooms = async () => {
     const currentUsername = localStorage.getItem('username');
     if (!currentUsername) return;
@@ -82,14 +76,12 @@ function App() {
     }
   };
 
-  // 3. Fetch rooms when user logs in
   useEffect(() => {
     if (username) {
       fetchRooms();
     }
   }, [username]); 
 
-  // 4. WebSocket Connection
   useEffect(() => {
     if (!isLoggedIn) return; 
 
@@ -465,8 +457,12 @@ function App() {
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || 'Could not create DM.');
+      // Check if the backend rejected it (e.g., user doesn't exist)
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not create DM.');
+      }
       
+      // Only add member if room creation was successful
       await fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -684,7 +680,6 @@ function App() {
               </button>
             </form>
 
-            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) */}
             <form onSubmit={(e) => {
               e.preventDefault();
               setShowDmModal(true);
@@ -791,7 +786,6 @@ function App() {
             </button>
           </form>
 
-          {/* DIRECT MESSAGE FORM (SIDEBAR) */}
           <form onSubmit={(e) => {
             e.preventDefault();
             setShowDmModal(true);
