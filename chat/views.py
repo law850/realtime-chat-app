@@ -172,23 +172,19 @@ def create_room(request):
     if not username or not room_name:
         return Response({'error': 'Missing data'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Sanitize the room name exactly as the frontend did
     formatted_room = room_name.strip().lower().replace(' ', '-')
 
     # --- FIXED LOGIC: Bulletproof DM validation ---
-    is_valid = True
-    error_message = ''
-    
     if '-' in formatted_room:
         users_in_room = formatted_room.split('-')
         for u in users_in_room:
-            if not User.objects.filter(username=u).exists():
-                is_valid = False
-                error_message = f'User "{u}" does not exist. Please ask them to register first.'
-                break # Stop checking immediately if one is invalid
-
-    # If validation failed, return the error and stop execution completely
-    if not is_valid:
-        return Response({'error': error_message}, status=status.HTTP_404_NOT_FOUND)
+            # Check if the user exists (case-insensitive)
+            if not User.objects.filter(username__iexact=u).exists():
+                return Response(
+                    {'error': f'User "{u}" does not exist. Please ask them to register first.'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
     # ----------------------------------------------
 
     try:

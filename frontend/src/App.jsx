@@ -16,6 +16,7 @@ function App() {
 
   const [showDmModal, setShowDmModal] = useState(false);
   const [dmTargetUser, setDmTargetUser] = useState('');
+  const [dmError, setDmError] = useState('');
 
   const [room, setRoom] = useState(null);
   const [newRoom, setNewRoom] = useState('');
@@ -447,6 +448,7 @@ function App() {
 
   const handleStartDm = async () => {
     if (!dmTargetUser || dmTargetUser === username) return;
+    setDmError('');
     const dmRoomName = [username, dmTargetUser].sort().join('-');
     
     try {
@@ -457,12 +459,11 @@ function App() {
       });
       const data = await res.json();
       
-      // Check if the backend rejected it (e.g., user doesn't exist)
       if (!res.ok) {
-        throw new Error(data.error || 'Could not create DM.');
+        setDmError(data.error || 'Could not create DM.');
+        return;
       }
       
-      // Only add member if room creation was successful
       await fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -474,7 +475,7 @@ function App() {
       setShowDmModal(false);
       setDmTargetUser('');
     } catch (err) {
-      alert(err.message);
+      setDmError('Network error. Please try again.');
     }
   };
 
@@ -512,7 +513,6 @@ function App() {
       </div>
     );
   }
-  // -------------------------
 
   // --- LOGIN / REGISTER / RESET SCREEN ---
   if (!isLoggedIn) {
@@ -1151,9 +1151,11 @@ function App() {
               autoFocus
             />
             
+            {dmError && <p className="text-red-400 mb-4 text-sm">{dmError}</p>}
+
             <div className="flex justify-end gap-3">
               <button 
-                onClick={() => { setShowDmModal(false); setDmTargetUser(''); }}
+                onClick={() => { setShowDmModal(false); setDmTargetUser(''); setDmError(''); }}
                 className="px-6 py-3 text-slate-400 hover:text-white font-bold transition"
               >
                 Cancel
