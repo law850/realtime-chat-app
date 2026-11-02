@@ -386,7 +386,10 @@ function App() {
 
   // --- CUSTOM EDIT / DELETE HANDLERS ---
   const handleDeleteMessage = (id) => {
-    if (readyState !== 1) return;
+    if (readyState !== 1) {
+      alert("You are offline. Please check your connection.");
+      return;
+    }
     ws.current.send(JSON.stringify({
       action: 'delete',
       id: id
@@ -441,7 +444,6 @@ function App() {
     }
   };
 
-  // --- THIS WAS MISSING! ---
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     const formattedRoom = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
