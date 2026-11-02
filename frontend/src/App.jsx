@@ -662,7 +662,7 @@ function App() {
               
               const dmRoomName = [username, targetUser].sort().join('-');
               
-              fetch('http://127.0.0.1:8000/api/create-room/', {
+              fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: username, room_name: dmRoomName })
@@ -676,7 +676,7 @@ function App() {
               })
               .then(data => {
                 if (data.room_name) {
-                  fetch('http://127.0.0.1:8000/api/add-member/', {
+                  fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
