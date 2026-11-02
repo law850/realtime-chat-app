@@ -130,7 +130,6 @@ function App() {
       } else if (data.action === 'user_list') {
         setActiveUsers(data.users);
       } else {
-        // Standard Chat Message Handling
         if (data.room === room) {
           setMessages((prev) => [...prev, data]);
         } else if (data.username !== username) {
@@ -454,7 +453,6 @@ function App() {
     }
   };
 
-  // --- NEW: Function to handle DM Creation from Modal ---
   const handleStartDm = async () => {
     if (!dmTargetUser || dmTargetUser === username) return;
     const dmRoomName = [username, dmTargetUser].sort().join('-');
@@ -526,7 +524,6 @@ function App() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
         <div className="bg-slate-900 p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 text-center relative overflow-hidden">
           
-          {/* NEW: Back to Landing Button */}
           <button 
             onClick={() => setShowLanding(true)}
             className="absolute top-4 left-4 text-slate-500 hover:text-white text-sm font-bold transition z-10"
@@ -687,7 +684,7 @@ function App() {
               </button>
             </form>
 
-            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) */}
+            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) - Changed to open modal */}
             <form onSubmit={(e) => {
               e.preventDefault();
               setShowDmModal(true);
@@ -744,9 +741,10 @@ function App() {
   // --- CHAT ROOM UI ---
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+      {/* Changed to flex-col md:flex-row for mobile */}
       <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex flex-col md:flex-row overflow-hidden h-[85vh]">
         
-        {/* SIDEBAR - Hidden on mobile if a room is selected */}
+        {/* SIDEBAR - Hidden on mobile if room is open */}
         <div className={`w-full md:w-72 bg-slate-950 p-6 border-r border-slate-800 flex-col h-full ${room ? 'hidden md:flex' : 'flex'}`}>
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
@@ -794,7 +792,7 @@ function App() {
             </button>
           </form>
 
-          {/* DIRECT MESSAGE FORM (SIDEBAR) */}
+          {/* DIRECT MESSAGE FORM (SIDEBAR) - Changed to open modal */}
           <form onSubmit={(e) => {
             e.preventDefault();
             setShowDmModal(true);
@@ -826,18 +824,13 @@ function App() {
           </div>
         </div>
 
-        {/* MAIN CHAT AREA - Hidden on mobile if no room is selected */}
+        {/* MAIN CHAT AREA - Hidden on mobile if no room is open */}
         <div className={`flex-1 flex-col bg-slate-900 h-full ${room ? 'flex' : 'hidden md:flex'}`}>
           
           <div className="h-20 px-4 md:px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm relative">
             <div className="flex items-center gap-3">
-              {/* MOBILE BACK BUTTON */}
-              <button 
-                onClick={() => setRoom(null)} 
-                className="md:hidden text-indigo-400 hover:text-indigo-300 font-bold text-2xl"
-              >
-                ←
-              </button>
+              {/* Back button for mobile */}
+              <button onClick={() => setRoom(null)} className="md:hidden text-indigo-400 hover:text-indigo-300 font-bold text-2xl">←</button>
               <div>
                 <h2 className="text-xl font-bold text-white"># {room}</h2>
                 <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
@@ -1022,7 +1015,7 @@ function App() {
               
               <textarea 
                 placeholder={`Message #${room}...`}
-                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar text-sm md:text-base"
+                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 transition text-white resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar text-sm md:text-base"
                 value={message} 
                 onChange={handleTyping}
                 onKeyDown={(e) => {
