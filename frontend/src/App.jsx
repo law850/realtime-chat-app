@@ -18,7 +18,6 @@ function App() {
   const [dmTargetUser, setDmTargetUser] = useState('');
   const [dmError, setDmError] = useState('');
 
-  // NEW: State for Edit and Confirm Modals
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editMessageText, setEditMessageText] = useState('');
   const [editMessageId, setEditMessageId] = useState(null);
@@ -384,7 +383,6 @@ function App() {
     }));
   };
 
-  // --- CUSTOM EDIT / DELETE HANDLERS ---
   const handleDeleteMessage = (id) => {
     if (readyState !== 1) return;
     ws.current.send(JSON.stringify({
@@ -414,6 +412,59 @@ function App() {
     setConfirmMessage(messageText);
     setConfirmAction(() => actionFunction);
     setConfirmModalOpen(true);
+  };
+
+  const handleFileUpload = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await fetch('https://tubonge-backend-0d7b.onrender.com/api/upload/', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      
+      if (data.url) {
+        ws.current.send(JSON.stringify({
+          message: `📎 File: ${data.url}`,
+          username: username,
+        }));
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+  };
+
+  // THIS WAS MISSING!
+  const handleCreateRoom = async (e) => {
+    e.preventDefault();
+    const formattedRoom = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!formattedRoom) return;
+
+    try {
+      const res = await fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, room_name: formattedRoom })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setNewRoom(''); 
+        setRoom(data.room_name); 
+        setIsAdmin(true); 
+        fetchRooms();
+      } else {
+        alert(data.error || 'Failed to create room');
+      }
+    } catch (err) {
+      alert('Server error');
+    }
   };
 
   const handleStartDm = async () => {
