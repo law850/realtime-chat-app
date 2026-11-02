@@ -18,6 +18,7 @@ function App() {
   const [dmTargetUser, setDmTargetUser] = useState('');
   const [dmError, setDmError] = useState('');
 
+  // State for Edit and Confirm Modals
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editMessageText, setEditMessageText] = useState('');
   const [editMessageId, setEditMessageId] = useState(null);
@@ -383,6 +384,7 @@ function App() {
     }));
   };
 
+  // --- CUSTOM EDIT / DELETE HANDLERS ---
   const handleDeleteMessage = (id) => {
     if (readyState !== 1) return;
     ws.current.send(JSON.stringify({
@@ -439,7 +441,7 @@ function App() {
     }
   };
 
-  // THIS WAS MISSING!
+  // --- THIS WAS MISSING! ---
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     const formattedRoom = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
