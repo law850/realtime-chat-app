@@ -18,7 +18,6 @@ function App() {
   const [dmTargetUser, setDmTargetUser] = useState('');
   const [dmError, setDmError] = useState('');
 
-  // State for Edit and Confirm Modals
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editMessageText, setEditMessageText] = useState('');
   const [editMessageId, setEditMessageId] = useState(null);
@@ -92,16 +91,28 @@ function App() {
     }
   }, [username]); 
 
+  // --- FIXED WEBSOCKET LOGIC ---
   useEffect(() => {
     if (!isLoggedIn) return; 
+
+    // Only connect if we aren't already connected to the same room
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        return; 
+    }
 
     if (ws.current) ws.current.close();
 
     const targetRoom = room || 'general';
     ws.current = new WebSocket(`wss://tubonge-backend-0d7b.onrender.com/ws/chat/${targetRoom}/?username=${username}`);
 
-    ws.current.onopen = () => setReadyState(1);
-    ws.current.onclose = () => setReadyState(3);
+    ws.current.onopen = () => {
+      setReadyState(1);
+      console.log("WebSocket Connected");
+    };
+    ws.current.onclose = () => {
+      setReadyState(3);
+      console.log("WebSocket Disconnected");
+    };
     ws.current.onerror = () => setReadyState(3);
 
     ws.current.onmessage = (event) => {
@@ -384,7 +395,6 @@ function App() {
     }));
   };
 
-  // --- CUSTOM EDIT / DELETE HANDLERS ---
   const handleDeleteMessage = (id) => {
     if (readyState !== 1) {
       alert("You are offline. Please check your connection.");
