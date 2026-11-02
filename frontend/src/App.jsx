@@ -12,6 +12,9 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [token, setToken] = useState(localStorage.getItem('access_token') || null);
   
+  // --- NEW: State for Landing Page ---
+  const [showLanding, setShowLanding] = useState(true);
+
   const [room, setRoom] = useState(null);
   const [newRoom, setNewRoom] = useState('');
   const [message, setMessage] = useState('');
@@ -456,11 +459,48 @@ function App() {
 
   const connectionStatus = readyState === 1 ? 'Online' : readyState === 0 ? 'Connecting...' : 'Offline';
 
+  // --- NEW LANDING PAGE ---
+  if (!isLoggedIn && showLanding) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+        
+        <div className="relative z-10 max-w-2xl w-full text-center">
+          <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center text-white font-bold text-5xl mx-auto mb-8 shadow-2xl shadow-indigo-500/30">
+            #
+          </div>
+          <h1 className="text-5xl font-extrabold text-white mb-6 tracking-tight">
+            Welcome to <span className="text-indigo-400">TubongeApp</span>
+          </h1>
+          <p className="text-lg text-slate-400 mb-12 max-w-lg mx-auto leading-relaxed">
+            Simple, reliable and private. Message privately, make calls and share files with your friends, family and colleagues.
+          </p>
+          <button 
+            onClick={() => setShowLanding(false)}
+            className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-lg rounded-full transition-all shadow-lg shadow-indigo-500/30 hover:scale-105"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
+  // -------------------------
+
   // --- LOGIN / REGISTER / RESET SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
         <div className="bg-slate-900 p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 text-center relative overflow-hidden">
+          
+          {/* NEW: Back to Landing Button */}
+          <button 
+            onClick={() => setShowLanding(true)}
+            className="absolute top-4 left-4 text-slate-500 hover:text-white text-sm font-bold transition z-10"
+          >
+            ← Back
+          </button>
+
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
           
           <h2 className="text-4xl font-extrabold mb-2 text-white">
