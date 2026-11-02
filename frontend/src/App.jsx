@@ -12,7 +12,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [token, setToken] = useState(localStorage.getItem('access_token') || null);
   
-  const [room, setRoom] = useState('general');
+  const [room, setRoom] = useState(null);
   const [newRoom, setNewRoom] = useState('');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -23,19 +23,29 @@ function App() {
   const [showUserList, setShowUserList] = useState(false); 
   const [unreadCounts, setUnreadCounts] = useState({});
   
+  const [hiddenMessages, setHiddenMessages] = useState([]);
+
   // Settings States
   const [showSettings, setShowSettings] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
+
+  // Admin/Group States
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [roomMembers, setRoomMembers] = useState([]);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [manageError, setManageError] = useState('');
+  const [manageSuccess, setManageSuccess] = useState('');
   
   const ws = useRef(null);
   const chatEndRef = useRef(null);
 
-  const [rooms, setRooms] = useState(['general', 'tech', 'gaming', 'random']);
+  const [rooms, setRooms] = useState(['general']);
 
-  // Load token AND username on startup
+  // 1. Load user on startup
   useEffect(() => {
     const savedToken = localStorage.getItem('access_token');
     const savedUsername = localStorage.getItem('username');
@@ -49,12 +59,37 @@ function App() {
     }
   }, []);
 
+  // 2. Reusable function to fetch rooms
+  const fetchRooms = async () => {
+    const currentUsername = localStorage.getItem('username');
+    if (!currentUsername) return;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/rooms/?username=${currentUsername}`);
+      const data = await res.json();
+      if (data.rooms) {
+        setRooms(data.rooms);
+      }
+    } catch (err) {
+      console.error("Failed to fetch rooms", err);
+    }
+  };
+
+  // 3. Fetch rooms when user logs in
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (username) {
+      fetchRooms();
+    }
+  }, [username]); 
+
+  // 4. WebSocket Connection
+  useEffect(() => {
+    if (!isLoggedIn) return; 
 
     if (ws.current) ws.current.close();
 
-    ws.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${room}/?username=${username}`);
+    const targetRoom = room || 'general';
+    ws.current = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${targetRoom}/?username=${username}`);
 
     ws.current.onopen = () => setReadyState(1);
     ws.current.onclose = () => setReadyState(3);
@@ -64,10 +99,16 @@ function App() {
       const data = JSON.parse(event.data);
       
       if (data.action === 'delete') {
-        setMessages((prev) => prev.filter((msg) => msg.id !== data.id));
+        setMessages((prev) => 
+          prev.map((msg) => 
+            msg.id === data.id 
+              ? { ...msg, message: "⚠️ This message was unsent." } 
+              : msg
+          )
+        );
       } else if (data.action === 'edit') {
         setMessages((prev) => 
-          prev.map((msg) => msg.id === data.id ? { ...msg, message: data.message } : msg)
+          prev.map((msg) => msg.id === data.id ? { ...msg, message: data.message, is_edited: true } : msg)
         );
       } else if (data.action === 'typing') {
         setTypingUsers(prev => {
@@ -81,22 +122,24 @@ function App() {
         });
       } else if (data.action === 'user_list') {
         setActiveUsers(data.users);
-      } else if (data.action === 'unread') {
-        if (data.username !== username && data.room !== room) {
+      } else {
+        // Standard Chat Message Handling
+        if (data.room === room) {
+          setMessages((prev) => [...prev, data]);
+        } else if (data.username !== username) {
+          // Only add unread badge if it's a message in a room we are NOT viewing
           setUnreadCounts(prev => ({
             ...prev,
             [data.room]: (prev[data.room] || 0) + 1
           }));
         }
-      } else {
-        setMessages((prev) => [...prev, data]);
       }
     };
 
     return () => {
       if (ws.current) ws.current.close();
     };
-  }, [isLoggedIn, room]);
+  }, [isLoggedIn, room, username]); 
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -136,7 +179,7 @@ function App() {
           setAnswer('');
         } else {
           localStorage.setItem('access_token', data.access);
-          localStorage.setItem('username', username); // SAVE USERNAME
+          localStorage.setItem('username', username);
           setToken(data.access);
           setIsLoggedIn(true);
         }
@@ -175,7 +218,6 @@ function App() {
     }
   };
 
-  // UPDATED: Shows success message for 3 seconds before closing
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setSettingsError('');
@@ -200,7 +242,6 @@ function App() {
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        // Keep modal open for 3 seconds so user sees the message
         setTimeout(() => {
           setShowSettings(false);
           setSettingsSuccess(''); 
@@ -213,9 +254,80 @@ function App() {
     }
   };
 
+  const checkAdminStatus = async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/check-admin/?username=${username}&room=${room}`);
+      const data = await res.json();
+      setIsAdmin(data.is_admin);
+      if (data.is_admin) {
+        fetchRoomMembers();
+        setShowManageModal(true);
+      } else {
+        alert("You are not an admin of this room.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchRoomMembers = async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/room-members/?room=${room}`);
+      const data = await res.json();
+      setRoomMembers(data.members);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddMember = async (e) => {
+    e.preventDefault();
+    setManageError('');
+    setManageSuccess('');
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/add-member/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_username: username, room_name: room, new_member_username: newMemberName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setManageSuccess(data.message);
+        setNewMemberName('');
+        fetchRoomMembers();
+      } else {
+        setManageError(data.error || 'Failed to add member');
+      }
+    } catch (err) {
+      setManageError('Server error');
+    }
+  };
+
+  const handleRemoveMember = async (memberName) => {
+    if (!window.confirm(`Are you sure you want to remove ${memberName}?`)) return;
+    setManageError('');
+    setManageSuccess('');
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/remove-member/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_username: username, room_name: room, member_to_remove: memberName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setManageSuccess(data.message);
+        fetchRoomMembers();
+      } else {
+        setManageError(data.error || 'Failed to remove member');
+      }
+    } catch (err) {
+      setManageError('Server error');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
-    localStorage.removeItem('username'); // REMOVE USERNAME
+    localStorage.removeItem('username');
     setToken(null);
     setIsLoggedIn(false);
     setUsername('');
@@ -309,13 +421,30 @@ function App() {
     }
   };
 
-  const handleCreateRoom = (e) => {
+  const handleCreateRoom = async (e) => {
     e.preventDefault();
     const formattedRoom = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
-    if (formattedRoom && !rooms.includes(formattedRoom)) {
-      setRooms([...rooms, formattedRoom]);
-      setRoom(formattedRoom);
-      setNewRoom('');
+    if (!formattedRoom) return;
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/create-room/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, room_name: formattedRoom })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setNewRoom(''); 
+        setRoom(data.room_name); 
+        setIsAdmin(true); 
+        fetchRooms();
+      } else {
+        alert(data.error || 'Failed to create room');
+      }
+    } catch (err) {
+      alert('Server error');
     }
   };
 
@@ -441,6 +570,135 @@ function App() {
     );
   }
 
+  // --- WELCOME SCREEN (When no room is selected) ---
+  if (!room) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+        <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex overflow-hidden h-[85vh]">
+          
+          {/* SIDEBAR */}
+          <div className="w-72 bg-slate-950 p-6 border-r border-slate-800 flex flex-col">
+             <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">#</div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Chats</h2>
+              </div>
+              <button onClick={fetchRooms} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold" title="Refresh Rooms">↻</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+              {rooms.map((r) => (
+                <button 
+                  key={r}
+                  onClick={() => setRoom(r)}
+                  className="w-full text-left px-4 py-3 rounded-xl font-medium transition text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent"
+                >
+                  <span className="truncate"># {r}</span>
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleCreateRoom} className="mt-4 pt-4 border-t border-slate-800 flex gap-2">
+              <input 
+                type="text" 
+                placeholder="+ New room" 
+                className="flex-1 p-3 bg-slate-900 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
+                value={newRoom}
+                onChange={(e) => setNewRoom(e.target.value)}
+              />
+              <button 
+                type="submit" 
+                className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-sm transition"
+              >
+                Add
+              </button>
+            </form>
+
+            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) */}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const targetUser = prompt("Enter the username you want to message:");
+              if (!targetUser || targetUser === username) return;
+              
+              const dmRoomName = [username, targetUser].sort().join('-');
+              
+              fetch('http://127.0.0.1:8000/api/create-room/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, room_name: dmRoomName })
+              })
+              .then(async res => {
+                const data = await res.json();
+                if (!res.ok) {
+                  throw new Error(data.error || 'Could not create DM.');
+                }
+                return data;
+              })
+              .then(data => {
+                if (data.room_name) {
+                  fetch('http://127.0.0.1:8000/api/add-member/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
+                  }).then(() => {
+                    setRoom(data.room_name);
+                    fetchRooms();
+                  });
+                }
+              })
+              .catch(err => {
+                alert(err.message || 'Could not create DM. Does the user exist?');
+              });
+            }} className="mt-2">
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-bold text-sm transition"
+              >
+                💬 Message Someone Directly
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
+                  {username.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-bold text-white truncate">{username}</p>
+                  <p className="text-xs text-green-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Online
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button onClick={() => setShowSettings(true)} className="text-indigo-400 hover:text-indigo-300 text-xs font-bold text-left">Settings</button>
+                <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold text-left">Logout</button>
+              </div>
+            </div>
+          </div>
+
+          {/* WELCOME MESSAGE */}
+          <div className="flex-1 flex flex-col bg-slate-900 items-center justify-center text-center p-8">
+            <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center text-5xl mb-6">👋</div>
+            <h1 className="text-4xl font-extrabold text-white mb-4">Welcome to the App!</h1>
+            <p className="text-slate-400 max-w-md mb-8">
+              It looks like you are not in any room yet. Create a new room or select one from the sidebar to start chatting.
+            </p>
+            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 text-left max-w-md">
+              <h3 className="text-lg font-bold text-indigo-400 mb-2">How to start:</h3>
+              <ul className="text-sm text-slate-300 list-decimal list-inside space-y-2">
+                <li>Type a name in the <strong>"+ New room"</strong> box on the left.</li>
+                <li>Click <strong>Add</strong> to create the room.</li>
+                <li>Once inside, click <strong>Manage Group</strong> to add your friends.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   // --- CHAT ROOM UI ---
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
@@ -448,11 +706,12 @@ function App() {
         
         {/* SIDEBAR */}
         <div className="w-72 bg-slate-950 p-6 border-r border-slate-800 flex flex-col">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-              #
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">#</div>
+              <h2 className="text-2xl font-bold text-white tracking-tight">Chats</h2>
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Chats</h2>
+            <button onClick={fetchRooms} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold" title="Refresh Rooms">↻</button>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
@@ -477,16 +736,66 @@ function App() {
             ))}
           </div>
 
-          <form onSubmit={handleCreateRoom} className="mt-4 pt-4 border-t border-slate-800">
+          <form onSubmit={handleCreateRoom} className="mt-4 pt-4 border-t border-slate-800 flex gap-2">
             <input 
               type="text" 
               placeholder="+ New room" 
-              className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
+              className="flex-1 p-3 bg-slate-900 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white"
               value={newRoom}
               onChange={(e) => setNewRoom(e.target.value)}
             />
+            <button 
+              type="submit" 
+              className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-sm transition"
+            >
+              Add
+            </button>
           </form>
-          
+
+          {/* DIRECT MESSAGE FORM (SIDEBAR) */}
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const targetUser = prompt("Enter the username you want to message:");
+            if (!targetUser || targetUser === username) return;
+            
+            const dmRoomName = [username, targetUser].sort().join('-');
+            
+            fetch('http://127.0.0.1:8000/api/create-room/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: username, room_name: dmRoomName })
+            })
+            .then(async res => {
+              const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || 'Could not create DM.');
+              }
+              return data;
+            })
+            .then(data => {
+              if (data.room_name) {
+                fetch('http://127.0.0.1:8000/api/add-member/', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
+                }).then(() => {
+                  setRoom(data.room_name);
+                  fetchRooms();
+                });
+              }
+            })
+            .catch(err => {
+              alert(err.message || 'Could not create DM. Does the user exist?');
+            });
+          }} className="mt-2">
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-bold text-sm transition"
+            >
+              💬 Message Someone Directly
+            </button>
+          </form>
+
           <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
@@ -515,7 +824,21 @@ function App() {
               <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
             </div>
 
-            <div className="relative">
+            <div className="relative flex items-center gap-4">
+              <button 
+                onClick={() => { fetchRoomMembers(); setShowManageModal(true); }}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg border border-slate-700 transition"
+              >
+                {roomMembers.length} Members
+              </button>
+
+              <button 
+                onClick={checkAdminStatus}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-400 px-3 py-1 rounded-lg border border-slate-700 transition"
+              >
+                Manage Group
+              </button>
+
               <button 
                 onClick={() => setShowUserList(!showUserList)}
                 className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-full transition"
@@ -551,19 +874,22 @@ function App() {
             )}
             
             {messages.map((msg, index) => {
+              if (hiddenMessages.includes(msg.id)) return null;
+
               const isMe = msg.username === username;
               const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
 
               return (
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold ${getAvatarColor(msg.username)}`}>
-                    {msg.username.charAt(0).toUpperCase()}
+                                        {msg.username.charAt(0).toUpperCase()}
                   </div>
                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
                     <div className="flex items-center gap-2 mb-1 px-1">
                       <span className="text-xs text-slate-400 font-bold">{msg.username}</span>
                       <span className="text-[10px] text-slate-500">
                         {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {msg.is_edited && <span className="ml-1 italic text-slate-500">(edited)</span>}
                       </span>
                       {msg.id && (
                         <>
@@ -576,7 +902,28 @@ function App() {
                           {isMe && (
                             <>
                               <button onClick={() => handleEditMessage(msg.id, msg.message)} className="text-yellow-400 hover:text-yellow-300 transition text-[10px] font-bold">[Edit]</button>
-                              <button onClick={() => handleDeleteMessage(msg.id)} className="text-red-400 hover:text-red-300 transition text-[10px] font-bold">[Delete]</button>
+                              
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm("Delete this message only for yourself?")) {
+                                    setHiddenMessages(prev => [...prev, msg.id]);
+                                  }
+                                }} 
+                                className="text-slate-400 hover:text-slate-300 transition text-[10px] font-bold"
+                              >
+                                [Delete for me]
+                              </button>
+                              
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm("Unsend this message for everyone?")) {
+                                    handleDeleteMessage(msg.id);
+                                  }
+                                }} 
+                                className="text-red-400 hover:text-red-300 transition text-[10px] font-bold"
+                              >
+                                [Unsend]
+                              </button>
                             </>
                           )}
                         </>
@@ -591,7 +938,7 @@ function App() {
 
                     <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed chat-bubble ${
                       isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm'
-                    }`}>
+                    } ${msg.message === "⚠️ This message was unsent." ? 'italic opacity-60' : ''}`}>
                       {msg.message.includes('📎 File:') ? (
                         /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.message) ? (
                           <div className="flex flex-col gap-2">
@@ -723,6 +1070,61 @@ function App() {
                 Update Password
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE MEMBERS MODAL */}
+      {showManageModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Manage #{room}</h2>
+              <button onClick={() => setShowManageModal(false)} className="text-slate-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            {manageError && <p className="text-red-400 mb-4 text-sm text-center">{manageError}</p>}
+            {manageSuccess && <p className="text-green-400 mb-4 text-sm text-center">{manageSuccess}</p>}
+
+            <form onSubmit={handleAddMember} className="flex gap-2 mb-6">
+              <input 
+                type="text" 
+                placeholder="Username to add..." 
+                className="flex-1 p-3 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                value={newMemberName}
+                onChange={e => setNewMemberName(e.target.value)}
+                required
+              />
+              <button type="submit" className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition">
+                Add
+              </button>
+            </form>
+
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Current Members</h3>
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto custom-scrollbar">
+              {roomMembers.map((member, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(member.username)}`}>
+                      {member.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm text-slate-200">{member.username}</span>
+                    {member.role === 'admin' && (
+                      <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Admin</span>
+                    )}
+                  </div>
+                  
+                  {member.username !== username && (
+                    <button 
+                      onClick={() => handleRemoveMember(member.username)}
+                      className="text-red-400 hover:text-red-300 text-xs font-bold transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

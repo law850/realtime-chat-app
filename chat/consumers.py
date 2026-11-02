@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Message
@@ -11,8 +12,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
         
+        # Safely extract username using parse_qs
         query_string = self.scope['query_string'].decode()
-        self.username = query_string.split('=')[1] if '=' in query_string else 'Anonymous'
+        parsed_query = parse_qs(query_string)
+        self.username = parsed_query.get('username', ['Anonymous'])[0]
 
         # 1. Join the specific room group
         await self.channel_layer.group_add(
@@ -20,7 +23,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         
-        # 2. Join the GLOBAL notification group (This was missing!)
+        # 2. Join the GLOBAL notification group
         await self.channel_layer.group_add(
             'global_notifications',
             self.channel_name
@@ -63,12 +66,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if action == 'delete':
             message_id = text_data_json.get('id')
-            await self.delete_message_from_db(message_id)
+            
+            # Update DB to "unsent" instead of deleting
+            await self.unsend_message_in_db(message_id)
             
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    'type': 'message_deleted',
+                    'type': 'message_unsent',
                     'id': message_id
                 }
             )
@@ -117,19 +122,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'message': message,
                     'username': username,
                     'room': self.room_name,
-                    'reply_to': reply_to_id
+                    'reply_to': reply_to_id,
+                    'is_edited': False # Explicitly false for new messages
                 }
             )
 
-            # Send to global notifications for unread badges
-            await self.channel_layer.group_send(
-                'global_notifications',
-                {
-                    'type': 'global_notification',
-                    'room': self.room_name,
-                    'username': username
-                }
-            )
+            # --- FIXED: Only send unread notifications for PUBLIC rooms, NOT DMs ---
+            # Direct Messages have a hyphen in their name (e.g., "mary-shad")
+            if '-' not in self.room_name:
+                await self.channel_layer.group_send(
+                    'global_notifications',
+                    {
+                        'type': 'global_notification',
+                        'room': self.room_name,
+                        'username': username
+                    }
+                )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -137,12 +145,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': event['message'],
             'username': event['username'],
             'room': event['room'],
-            'reply_to': event.get('reply_to')
+            'reply_to': event.get('reply_to'),
+            'is_edited': event.get('is_edited', False)
         }))
 
-    async def message_deleted(self, event):
+    async def message_unsent(self, event):
         await self.send(text_data=json.dumps({
-            'action': 'delete',
+            'action': 'delete', # Frontend still listens for 'delete'
             'id': event['id']
         }))
 
@@ -150,7 +159,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'action': 'edit',
             'id': event['id'],
-            'message': event['message']
+            'message': event['message'],
+            'is_edited': True # Tell frontend it's edited
         }))
 
     async def user_typing(self, event):
@@ -197,16 +207,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return msg.id
 
     @database_sync_to_async
-    def delete_message_from_db(self, message_id):
-        Message.objects.filter(id=message_id).delete()
+    def unsend_message_in_db(self, message_id):
+        Message.objects.filter(id=message_id).update(content="⚠️ This message was unsent.")
 
     @database_sync_to_async
     def edit_message_in_db(self, message_id, new_content):
-        Message.objects.filter(id=message_id).update(content=new_content)
+        # Added is_edited=True
+        Message.objects.filter(id=message_id).update(content=new_content, is_edited=True)
 
     @database_sync_to_async
     def get_history(self):
-        messages = list(Message.objects.filter(room=self.room_name).order_by('-timestamp')[:50].values('id', 'username', 'content', 'reply_to'))
+        # Added 'is_edited' to the values list
+        messages = list(Message.objects.filter(room=self.room_name).order_by('-timestamp')[:50].values('id', 'username', 'content', 'reply_to', 'is_edited'))
         return messages[::-1] 
 
     async def send_history(self):
@@ -217,7 +229,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': msg['content'],
                 'username': msg['username'],
                 'room': self.room_name,
-                'reply_to': msg['reply_to']
+                'reply_to': msg['reply_to'],
+                'is_edited': msg['is_edited'] # Pass it to frontend
             }))
 
 
