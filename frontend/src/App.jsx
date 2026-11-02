@@ -15,7 +15,7 @@ function App() {
   // --- NEW: State for Landing Page ---
   const [showLanding, setShowLanding] = useState(true);
 
-  // --- NEW: State for Custom DM Modal ---
+  // --- NEW: State for Custom DM Modal (THIS WAS MISSING) ---
   const [showDmModal, setShowDmModal] = useState(false);
   const [dmTargetUser, setDmTargetUser] = useState('');
 
@@ -490,7 +490,7 @@ function App() {
 
   const connectionStatus = readyState === 1 ? 'Online' : readyState === 0 ? 'Connecting...' : 'Offline';
 
-  // --- NEW LANDING PAGE ---
+  // --- LANDING PAGE ---
   if (!isLoggedIn && showLanding) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative overflow-hidden">
@@ -684,7 +684,7 @@ function App() {
               </button>
             </form>
 
-            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) - Changed to open modal */}
+            {/* DIRECT MESSAGE FORM (WELCOME SCREEN) */}
             <form onSubmit={(e) => {
               e.preventDefault();
               setShowDmModal(true);
@@ -741,7 +741,6 @@ function App() {
   // --- CHAT ROOM UI ---
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
-      {/* Changed to flex-col md:flex-row for mobile */}
       <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex flex-col md:flex-row overflow-hidden h-[85vh]">
         
         {/* SIDEBAR - Hidden on mobile if room is open */}
@@ -792,7 +791,7 @@ function App() {
             </button>
           </form>
 
-          {/* DIRECT MESSAGE FORM (SIDEBAR) - Changed to open modal */}
+          {/* DIRECT MESSAGE FORM (SIDEBAR) */}
           <form onSubmit={(e) => {
             e.preventDefault();
             setShowDmModal(true);
