@@ -18,6 +18,15 @@ function App() {
   const [dmTargetUser, setDmTargetUser] = useState('');
   const [dmError, setDmError] = useState('');
 
+  // NEW: State for Edit and Confirm Modals
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editMessageText, setEditMessageText] = useState('');
+  const [editMessageId, setEditMessageId] = useState(null);
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
+
   const [room, setRoom] = useState(null);
   const [newRoom, setNewRoom] = useState('');
   const [message, setMessage] = useState('');
@@ -375,6 +384,7 @@ function App() {
     }));
   };
 
+  // --- CUSTOM EDIT / DELETE HANDLERS ---
   const handleDeleteMessage = (id) => {
     if (readyState !== 1) return;
     ws.current.send(JSON.stringify({
@@ -384,66 +394,26 @@ function App() {
   };
 
   const handleEditMessage = (id, currentMessage) => {
-    const newMessage = prompt("Edit your message:", currentMessage);
-    if (newMessage && newMessage.trim() !== '' && newMessage !== currentMessage) {
+    setEditMessageId(id);
+    setEditMessageText(currentMessage);
+    setEditModalOpen(true);
+  };
+
+  const saveEditedMessage = () => {
+    if (editMessageText.trim() !== '' && readyState === 1) {
       ws.current.send(JSON.stringify({
         action: 'edit',
-        id: id,
-        message: newMessage
+        id: editMessageId,
+        message: editMessageText
       }));
     }
+    setEditModalOpen(false);
   };
 
-  const handleFileUpload = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const response = await fetch('https://tubonge-backend-0d7b.onrender.com/api/upload/', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      
-      if (data.url) {
-        ws.current.send(JSON.stringify({
-          message: `📎 File: ${data.url}`,
-          username: username,
-        }));
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-    }
-  };
-
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
-    const formattedRoom = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!formattedRoom) return;
-
-    try {
-      const res = await fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, room_name: formattedRoom })
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok) {
-        setNewRoom(''); 
-        setRoom(data.room_name); 
-        setIsAdmin(true); 
-        fetchRooms();
-      } else {
-        alert(data.error || 'Failed to create room');
-      }
-    } catch (err) {
-      alert('Server error');
-    }
+  const openConfirmModal = (messageText, actionFunction) => {
+    setConfirmMessage(messageText);
+    setConfirmAction(() => actionFunction);
+    setConfirmModalOpen(true);
   };
 
   const handleStartDm = async () => {
@@ -911,9 +881,9 @@ function App() {
                               
                               <button 
                                 onClick={() => {
-                                  if (window.confirm("Delete this message only for yourself?")) {
+                                  openConfirmModal("Delete this message only for yourself?", () => {
                                     setHiddenMessages(prev => [...prev, msg.id]);
-                                  }
+                                  });
                                 }} 
                                 className="text-slate-400 hover:text-slate-300 transition text-[10px] font-bold"
                               >
@@ -922,9 +892,9 @@ function App() {
                               
                               <button 
                                 onClick={() => {
-                                  if (window.confirm("Unsend this message for everyone?")) {
+                                  openConfirmModal("Unsend this message for everyone?", () => {
                                     handleDeleteMessage(msg.id);
-                                  }
+                                  });
                                 }} 
                                 className="text-red-400 hover:text-red-300 transition text-[10px] font-bold"
                               >
@@ -1165,6 +1135,62 @@ function App() {
                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30"
               >
                 Start Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: CUSTOM EDIT MODAL */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
+            <h2 className="text-2xl font-bold text-white mb-4">Edit Message</h2>
+            <textarea 
+              className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 transition text-white resize-none h-32 mb-4"
+              value={editMessageText}
+              onChange={(e) => setEditMessageText(e.target.value)}
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setEditModalOpen(false)}
+                className="px-6 py-3 text-slate-400 hover:text-white font-bold transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={saveEditedMessage}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: CUSTOM CONFIRM MODAL */}
+      {confirmModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
+            <h2 className="text-2xl font-bold text-white mb-4">Are you sure?</h2>
+            <p className="text-slate-400 mb-6">{confirmMessage}</p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setConfirmModalOpen(false)}
+                className="px-6 py-3 text-slate-400 hover:text-white font-bold transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirmAction) confirmAction();
+                  setConfirmModalOpen(false);
+                }}
+                className="px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-bold transition shadow-lg shadow-red-500/30"
+              >
+                Yes, Proceed
               </button>
             </div>
           </div>
