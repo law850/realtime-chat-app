@@ -15,6 +15,10 @@ function App() {
   // --- NEW: State for Landing Page ---
   const [showLanding, setShowLanding] = useState(true);
 
+  // --- NEW: State for Custom DM Modal ---
+  const [showDmModal, setShowDmModal] = useState(false);
+  const [dmTargetUser, setDmTargetUser] = useState('');
+
   const [room, setRoom] = useState(null);
   const [newRoom, setNewRoom] = useState('');
   const [message, setMessage] = useState('');
@@ -92,7 +96,6 @@ function App() {
     if (ws.current) ws.current.close();
 
     const targetRoom = room || 'general';
-    // FIXED: Using wss:// for secure WebSocket connection
     ws.current = new WebSocket(`wss://tubonge-backend-0d7b.onrender.com/ws/chat/${targetRoom}/?username=${username}`);
 
     ws.current.onopen = () => setReadyState(1);
@@ -158,7 +161,6 @@ function App() {
     }
 
     const endpoint = isRegistering ? 'register' : 'login';
-    // FIXED: Using https://
     const url = `https://tubonge-backend-0d7b.onrender.com/api/${endpoint}/`;
 
     try {
@@ -452,6 +454,36 @@ function App() {
     }
   };
 
+  // --- NEW: Function to handle DM Creation from Modal ---
+  const handleStartDm = async () => {
+    if (!dmTargetUser || dmTargetUser === username) return;
+    const dmRoomName = [username, dmTargetUser].sort().join('-');
+    
+    try {
+      const res = await fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, room_name: dmRoomName })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || 'Could not create DM.');
+      
+      await fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: dmTargetUser })
+      });
+      
+      setRoom(data.room_name);
+      fetchRooms();
+      setShowDmModal(false);
+      setDmTargetUser('');
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const getAvatarColor = (name) => {
     const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500'];
     const index = name.charCodeAt(0) % colors.length;
@@ -658,38 +690,7 @@ function App() {
             {/* DIRECT MESSAGE FORM (WELCOME SCREEN) */}
             <form onSubmit={(e) => {
               e.preventDefault();
-              const targetUser = prompt("Enter the username you want to message:");
-              if (!targetUser || targetUser === username) return;
-              
-              const dmRoomName = [username, targetUser].sort().join('-');
-              
-              fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username, room_name: dmRoomName })
-              })
-              .then(async res => {
-                const data = await res.json();
-                if (!res.ok) {
-                  throw new Error(data.error || 'Could not create DM.');
-                }
-                return data;
-              })
-              .then(data => {
-                if (data.room_name) {
-                  fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
-                  }).then(() => {
-                    setRoom(data.room_name);
-                    fetchRooms();
-                  });
-                }
-              })
-              .catch(err => {
-                alert(err.message || 'Could not create DM. Does the user exist?');
-              });
+              setShowDmModal(true);
             }} className="mt-2">
               <button 
                 type="submit" 
@@ -743,10 +744,10 @@ function App() {
   // --- CHAT ROOM UI ---
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
-      <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex overflow-hidden h-[85vh]">
+      <div className="bg-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-800 flex flex-col md:flex-row overflow-hidden h-[85vh]">
         
-        {/* SIDEBAR */}
-        <div className="w-72 bg-slate-950 p-6 border-r border-slate-800 flex flex-col">
+        {/* SIDEBAR - Hidden on mobile if a room is selected */}
+        <div className={`w-full md:w-72 bg-slate-950 p-6 border-r border-slate-800 flex-col h-full ${room ? 'hidden md:flex' : 'flex'}`}>
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">#</div>
@@ -796,38 +797,7 @@ function App() {
           {/* DIRECT MESSAGE FORM (SIDEBAR) */}
           <form onSubmit={(e) => {
             e.preventDefault();
-            const targetUser = prompt("Enter the username you want to message:");
-            if (!targetUser || targetUser === username) return;
-            
-            const dmRoomName = [username, targetUser].sort().join('-');
-            
-            fetch('https://tubonge-backend-0d7b.onrender.com/api/create-room/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: username, room_name: dmRoomName })
-            })
-            .then(async res => {
-              const data = await res.json();
-              if (!res.ok) {
-                throw new Error(data.error || 'Could not create DM.');
-              }
-              return data;
-            })
-            .then(data => {
-              if (data.room_name) {
-                fetch('https://tubonge-backend-0d7b.onrender.com/api/add-member/', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ admin_username: username, room_name: data.room_name, new_member_username: targetUser })
-                }).then(() => {
-                  setRoom(data.room_name);
-                  fetchRooms();
-                });
-              }
-            })
-            .catch(err => {
-              alert(err.message || 'Could not create DM. Does the user exist?');
-            });
+            setShowDmModal(true);
           }} className="mt-2">
             <button 
               type="submit" 
@@ -856,33 +826,42 @@ function App() {
           </div>
         </div>
 
-        {/* MAIN CHAT AREA */}
-        <div className="flex-1 flex flex-col bg-slate-900">
+        {/* MAIN CHAT AREA - Hidden on mobile if no room is selected */}
+        <div className={`flex-1 flex-col bg-slate-900 h-full ${room ? 'flex' : 'hidden md:flex'}`}>
           
-          <div className="h-20 px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm relative">
-            <div>
-              <h2 className="text-xl font-bold text-white"># {room}</h2>
-              <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
+          <div className="h-20 px-4 md:px-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm relative">
+            <div className="flex items-center gap-3">
+              {/* MOBILE BACK BUTTON */}
+              <button 
+                onClick={() => setRoom(null)} 
+                className="md:hidden text-indigo-400 hover:text-indigo-300 font-bold text-2xl"
+              >
+                ←
+              </button>
+              <div>
+                <h2 className="text-xl font-bold text-white"># {room}</h2>
+                <p className="text-xs text-slate-400">Welcome to the #{room} channel.</p>
+              </div>
             </div>
 
-            <div className="relative flex items-center gap-4">
+            <div className="relative flex items-center gap-2 md:gap-4">
               <button 
                 onClick={() => { fetchRoomMembers(); setShowManageModal(true); }}
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg border border-slate-700 transition"
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 md:px-3 py-1 rounded-lg border border-slate-700 transition hidden sm:block"
               >
                 {roomMembers.length} Members
               </button>
 
               <button 
                 onClick={checkAdminStatus}
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-400 px-3 py-1 rounded-lg border border-slate-700 transition"
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-400 px-2 md:px-3 py-1 rounded-lg border border-slate-700 transition"
               >
                 Manage Group
               </button>
 
               <button 
                 onClick={() => setShowUserList(!showUserList)}
-                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-full transition"
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 md:px-4 py-2 rounded-full transition"
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
                 <span className="text-sm font-medium text-slate-200">{activeUsers.length} Online</span>
@@ -906,7 +885,7 @@ function App() {
             </div>
           </div>
 
-          <div className="flex-1 p-8 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
+          <div className="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-slate-500">
                 <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center text-3xl mb-4">👋</div>
@@ -925,8 +904,8 @@ function App() {
                   <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold ${getAvatarColor(msg.username)}`}>
                                         {msg.username.charAt(0).toUpperCase()}
                   </div>
-                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                    <div className="flex items-center gap-2 mb-1 px-1">
+                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]`}>
+                    <div className="flex items-center gap-2 mb-1 px-1 flex-wrap">
                       <span className="text-xs text-slate-400 font-bold">{msg.username}</span>
                       <span className="text-[10px] text-slate-500">
                         {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -977,7 +956,7 @@ function App() {
                       </div>
                     )}
 
-                    <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed chat-bubble ${
+                    <div className={`px-4 md:px-5 py-2 md:py-3 rounded-2xl text-sm leading-relaxed chat-bubble ${
                       isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm'
                     } ${msg.message === "⚠️ This message was unsent." ? 'italic opacity-60' : ''}`}>
                       {msg.message.includes('📎 File:') ? (
@@ -1019,15 +998,15 @@ function App() {
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-6 bg-slate-900 border-t border-slate-800">
+          <div className="p-4 md:p-6 bg-slate-900 border-t border-slate-800">
             {replyTo && (
               <div className="flex justify-between items-center px-4 py-2 bg-slate-800 border border-slate-700 rounded-t-xl text-sm text-slate-300 mb-2">
-                <span>Replying to <strong>{replyTo.username}</strong>: {replyTo.message.substring(0, 30)}...</span>
+                <span className="truncate">Replying to <strong>{replyTo.username}</strong>: {replyTo.message.substring(0, 30)}...</span>
                 <button onClick={() => setReplyTo(null)} className="text-red-400 hover:text-red-300 font-bold ml-4">✕</button>
               </div>
             )}
             
-            <form onSubmit={handleSendMessage} className="flex gap-4 items-end">
+            <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-4 items-end">
               <input 
                 type="file" 
                 onChange={handleFileUpload} 
@@ -1036,14 +1015,14 @@ function App() {
               />
               <label 
                 htmlFor="file-upload" 
-                className="cursor-pointer px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition h-[52px]"
+                className="cursor-pointer px-3 md:px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition h-[52px]"
               >
                 📎
               </label>
               
               <textarea 
                 placeholder={`Message #${room}...`}
-                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar"
+                className="flex-1 p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-white resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar text-sm md:text-base"
                 value={message} 
                 onChange={handleTyping}
                 onKeyDown={(e) => {
@@ -1058,11 +1037,11 @@ function App() {
               
               <button 
                 type="submit" 
-                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold transition text-white disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-2 h-[52px]"
+                className="px-4 md:px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold transition text-white disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-2 h-[52px]"
                 disabled={readyState !== 1}
               >
                 Send
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                <svg className="w-5 h-5 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
               </button>
             </form>
           </div>
@@ -1072,7 +1051,7 @@ function App() {
 
       {/* SETTINGS MODAL */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">Change Password</h2>
@@ -1117,7 +1096,7 @@ function App() {
 
       {/* MANAGE MEMBERS MODAL */}
       {showManageModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">Manage #{room}</h2>
@@ -1165,6 +1144,40 @@ function App() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: CUSTOM DM MODAL */}
+      {showDmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
+            <h2 className="text-2xl font-bold text-white mb-2">New Direct Message</h2>
+            <p className="text-slate-400 text-sm mb-6">Enter the username of the person you want to chat with.</p>
+            
+            <input 
+              type="text" 
+              placeholder="Username" 
+              className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 transition text-white mb-4"
+              value={dmTargetUser}
+              onChange={(e) => setDmTargetUser(e.target.value)}
+              autoFocus
+            />
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => { setShowDmModal(false); setDmTargetUser(''); }}
+                className="px-6 py-3 text-slate-400 hover:text-white font-bold transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleStartDm}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30"
+              >
+                Start Chat
+              </button>
             </div>
           </div>
         </div>
