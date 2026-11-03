@@ -604,8 +604,9 @@ function App() {
         <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
         
         <div className="relative z-10 max-w-2xl w-full text-center">
-          <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center text-white font-bold text-5xl mx-auto mb-8 shadow-2xl shadow-indigo-500/30">
-            #
+                    <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex flex-col items-center justify-center text-white font-bold mx-auto mb-8 shadow-2xl shadow-indigo-500/30">
+            <span className="text-3xl mb-1 leading-none">💬</span>
+            <span className="text-2xl tracking-widest leading-none">TP</span>
           </div>
           <h1 className={`text-5xl font-extrabold mb-6 tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
             Welcome to <span className="text-indigo-400">TubongeApp</span>
@@ -759,7 +760,10 @@ function App() {
           {/* Row 1: Title, 3-Dots Menu */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">💬 TP</div>
+<div className="w-8 h-8 bg-indigo-600 rounded-lg flex flex-col items-center justify-center text-white font-bold leading-none">
+  <span className="text-[10px] mb-0.5">💬</span>
+  <span className="text-[10px] tracking-widest">TP</span>
+</div>
               <h2 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>TubongeApp</h2>
             </div>
             
