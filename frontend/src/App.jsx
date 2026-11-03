@@ -58,7 +58,7 @@ function App() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojis = ['😀', '😂', '😍', '😎', '😭', '👍', '👎', '❤️', '🔥', '🎉', '🙏', '💯', '🤔', '👀', '🙌'];
 
-  // --- NEW: Theme State ---
+  // --- Theme State ---
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -734,131 +734,82 @@ function App() {
     );
   }
 
-  // --- WELCOME SCREEN (When no room is selected) ---
-  if (!room) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-100'}`}>
-        <div className={`w-full max-w-6xl rounded-3xl shadow-2xl border flex overflow-hidden h-[85vh] ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
-          
-          {/* SIDEBAR */}
-          <div className={`w-72 p-6 border-r flex flex-col ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
-             <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">#</div>
-                <h2 className={`text-2xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Chats</h2>
-              </div>
-              <button onClick={fetchRooms} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold" title="Refresh Rooms">↻</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-              {rooms.map((r) => (
-                <button 
-                  key={r}
-                  onClick={() => setRoom(r)}
-                  className={`w-full text-left px-4 py-3 rounded-xl font-medium transition border border-transparent ${theme === 'dark' ? 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' : 'text-slate-600 hover:bg-gray-200 hover:text-slate-900'}`}
-                >
-                  <span className="truncate"># {r}</span>
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleCreateRoom} className={`mt-4 pt-4 border-t flex gap-2 ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
-              <input 
-                type="text" 
-                placeholder="+ New room" 
-                className={`flex-1 p-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-300 text-slate-900'}`}
-                value={newRoom}
-                onChange={(e) => setNewRoom(e.target.value)}
-              />
-              <button 
-                type="submit" 
-                className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-sm transition"
-              >
-                Add
-              </button>
-            </form>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              setShowDmModal(true);
-            }} className="mt-2">
-              <button 
-                type="submit" 
-                className={`w-full py-3 border rounded-xl font-bold text-sm transition ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white' : 'bg-gray-200 hover:bg-gray-300 border-gray-300 text-slate-900'}`}
-              >
-                💬 Message Someone Directly
-              </button>
-            </form>
-
-            <div className={`mt-6 pt-6 border-t flex items-center justify-between ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
-                  {profilePic ? (
-                    <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    username.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="overflow-hidden">
-                  <p className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{username}</p>
-                  <p className="text-xs text-green-400 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Online
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <button onClick={() => setShowSettings(true)} className="text-indigo-400 hover:text-indigo-300 text-xs font-bold text-left">Settings</button>
-                <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold text-left">Logout</button>
-              </div>
-            </div>
-          </div>
-
-          {/* WELCOME MESSAGE */}
-          <div className={`flex-1 flex flex-col items-center justify-center text-center p-8 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'}`}>👋</div>
-            <h1 className={`text-4xl font-extrabold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Welcome to the App!</h1>
-            <p className={`max-w-md mb-8 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-              It looks like you are not in any room yet. Create a new room or select one from the sidebar to start chatting.
-            </p>
-            <div className={`p-6 rounded-2xl border text-left max-w-md ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
-              <h3 className="text-lg font-bold text-indigo-400 mb-2">How to start:</h3>
-              <ul className={`text-sm list-decimal list-inside space-y-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                <li>Type a name in the <strong>"+ New room"</strong> box on the left.</li>
-                <li>Click <strong>Add</strong> to create the room.</li>
-                <li>Once inside, click <strong>Manage Group</strong> to add your friends.</li>
-              </ul>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // --- CHAT ROOM UI ---
+  // --- CHAT ROOM UI (Merged Layout) ---
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-100'}`}>
-      <div className={`w-full max-w-6xl rounded-3xl shadow-2xl border flex flex-col md:flex-row overflow-hidden h-[85vh] transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
+    <div className={`min-h-screen flex justify-center transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-100'}`}>
+      
+      {/* Main Container - Full width on mobile, constrained on desktop */}
+      <div className={`w-full max-w-2xl flex flex-col h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
         
-        {/* SIDEBAR - Hidden on mobile if room is open */}
-        <div className={`w-full md:w-72 p-6 border-r flex-col h-full transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'} ${room ? 'hidden md:flex' : 'flex'}`}>
-          <div className="flex items-center justify-between mb-8">
+        {/* ================= TOP HEADER (Replaces Sidebar) ================= */}
+        <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
+          
+          {/* Row 1: Title, Theme Toggle, Profile */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">#</div>
-              <h2 className={`text-2xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Chats</h2>
-              
-              {/* NEW: Theme Toggle Button */}
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">#</div>
+              <h2 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>TubongeApp</h2>
+            </div>
+            <div className="flex items-center gap-2">
               <button 
                 onClick={toggleTheme}
-                className={`ml-auto p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-yellow-400' : 'bg-gray-200 text-slate-800'}`}
-                title="Toggle Theme"
+                className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-yellow-400' : 'bg-gray-200 text-slate-800'}`}
               >
                 {theme === 'dark' ? '☀️' : '🌙'}
               </button>
+              <button onClick={() => setShowSettings(true)} className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-600'}`}>
+                ⚙️
+              </button>
+              <button onClick={handleLogout} className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-red-400' : 'bg-gray-200 text-red-500'}`}>
+                🚪
+              </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+          {/* Row 2: User Info */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+              {profilePic ? (
+                <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                username.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{username}</p>
+              <p className="text-xs text-green-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> {connectionStatus}
+              </p>
+            </div>
+          </div>
+
+          {/* Row 3: Action Buttons */}
+          <div className="flex gap-2">
+            <form onSubmit={handleCreateRoom} className="flex-1 flex gap-2">
+              <input 
+                type="text" 
+                placeholder="+ New room" 
+                className={`flex-1 p-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-300 text-slate-900'}`}
+                value={newRoom}
+                onChange={(e) => setNewRoom(e.target.value)}
+              />
+              <button type="submit" className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-sm transition">
+                Add
+              </button>
+            </form>
+            <button 
+              onClick={() => setShowDmModal(true)}
+              className={`px-3 py-2 border rounded-xl font-bold text-sm transition ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white' : 'bg-gray-200 hover:bg-gray-300 border-gray-300 text-slate-900'}`}
+            >
+              💬 DM
+            </button>
+          </div>
+        </div>
+
+        {/* ================= CHAT LIST ================= */}
+        {!room && (
+          <div className={`flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
+            <h3 className={`text-xs font-bold uppercase tracking-wider mb-4 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>Your Chats</h3>
             {rooms.map((r) => (
               <button 
                 key={r}
@@ -868,336 +819,237 @@ function App() {
                   setReplyTo(null); 
                   setUnreadCounts(prev => ({ ...prev, [r]: 0 })); 
                 }}
-                className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center justify-between ${room === r ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : theme === 'dark' ? 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent' : 'text-slate-600 hover:bg-gray-200 hover:text-slate-900 border border-transparent'}`}
+                className={`w-full text-left px-4 py-4 rounded-xl font-medium transition flex items-center justify-between border ${theme === 'dark' ? 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-200' : 'bg-gray-50 hover:bg-gray-100 border-gray-300 text-slate-800'}`}
               >
-                <span className="truncate"># {r}</span>
-                {unreadCounts[r] > 0 && room !== r && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(r)}`}>
+                    #
+                  </div>
+                  <span className="truncate text-lg"># {r}</span>
+                </div>
+                {unreadCounts[r] > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                     {unreadCounts[r]}
                   </span>
                 )}
               </button>
             ))}
           </div>
+        )}
 
-          <form onSubmit={handleCreateRoom} className={`mt-4 pt-4 border-t flex gap-2 ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
-            <input 
-              type="text" 
-              placeholder="+ New room" 
-              className={`flex-1 p-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-300 text-slate-900'}`}
-              value={newRoom}
-              onChange={(e) => setNewRoom(e.target.value)}
-            />
-            <button 
-              type="submit" 
-              className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-sm transition"
-            >
-              Add
-            </button>
-          </form>
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            setShowDmModal(true);
-          }} className="mt-2">
-            <button 
-              type="submit" 
-              className={`w-full py-3 border rounded-xl font-bold text-sm transition ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white' : 'bg-gray-200 hover:bg-gray-300 border-gray-300 text-slate-900'}`}
-            >
-              💬 Message Someone Directly
-            </button>
-          </form>
-
-          <div className={`mt-6 pt-6 border-t flex items-center justify-between ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
-                {profilePic ? (
-                  <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  username.charAt(0).toUpperCase()
-                )}
+        {/* ================= ACTIVE CHAT AREA ================= */}
+        {room && (
+          <div className="flex-1 flex flex-col h-full">
+            {/* Chat Header */}
+            <div className={`h-16 px-4 border-b flex justify-between items-center ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setRoom(null)} className="text-indigo-400 hover:text-indigo-300 font-bold text-2xl">←</button>
+                <div>
+                  <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}># {room}</h2>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{activeUsers.length} Online</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{username}</p>
-                <p className="text-xs text-green-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> {connectionStatus}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button onClick={() => setShowSettings(true)} className="text-indigo-400 hover:text-indigo-300 text-xs font-bold text-left">Settings</button>
-              <button onClick={handleLogout} className="text-red-400 hover:text-red-300 text-xs font-bold text-left">Logout</button>
-            </div>
-          </div>
-        </div>
-
-        {/* MAIN CHAT AREA - Hidden on mobile if no room is open */}
-        <div className={`flex-1 flex-col h-full ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} ${room ? 'flex' : 'hidden md:flex'}`}>
-          
-          <div className={`h-20 px-4 md:px-8 border-b flex justify-between items-center relative ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-sm' : 'bg-white/50 border-gray-300 backdrop-blur-sm'}`}>
-            <div className="flex items-center gap-3">
-              {/* Back button for mobile */}
-              <button onClick={() => setRoom(null)} className="md:hidden text-indigo-400 hover:text-indigo-300 font-bold text-2xl">←</button>
-              <div>
-                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}># {room}</h2>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Welcome to the #{room} channel.</p>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => { fetchRoomMembers(); setShowManageModal(true); }}
+                  className={`text-xs px-2 py-1 rounded-lg border transition ${theme === 'dark' ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-gray-200 text-slate-700 border-gray-300'}`}
+                >
+                  Members
+                </button>
+                <button 
+                  onClick={checkAdminStatus}
+                  className={`text-xs px-2 py-1 rounded-lg border transition ${theme === 'dark' ? 'bg-slate-800 text-indigo-400 border-slate-700' : 'bg-gray-200 text-indigo-600 border-gray-300'}`}
+                >
+                  Manage
+                </button>
               </div>
             </div>
 
-            <div className="relative flex items-center gap-2 md:gap-4">
-              <button 
-                onClick={() => { fetchRoomMembers(); setShowManageModal(true); }}
-                className={`text-xs px-2 md:px-3 py-1 rounded-lg border transition hidden sm:block ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' : 'bg-gray-200 hover:bg-gray-300 text-slate-700 border-gray-300'}`}
-              >
-                {roomMembers.length} Members
-              </button>
-
-              <button 
-                onClick={checkAdminStatus}
-                className={`text-xs px-2 md:px-3 py-1 rounded-lg border transition ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-indigo-400 border-slate-700' : 'bg-gray-200 hover:bg-gray-300 text-indigo-600 border-gray-300'}`}
-              >
-                Manage Group
-              </button>
-
-              <button 
-                onClick={() => setShowUserList(!showUserList)}
-                className={`flex items-center gap-2 border px-3 md:px-4 py-2 rounded-full transition ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200' : 'bg-gray-200 hover:bg-gray-300 border-gray-300 text-slate-800'}`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-sm font-medium">{activeUsers.length} Online</span>
-              </button>
-
-              {showUserList && (
-                <div className={`absolute right-0 top-12 w-56 border rounded-xl shadow-2xl p-4 z-50 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
-                  <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>Active Members</h3>
-                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
-                    {activeUsers.map((user, idx) => {
-                      const userPic = localStorage.getItem(`profile_pic_${user}`);
-                      return (
-                        <div key={idx} className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold overflow-hidden flex-shrink-0 ${userPic ? 'bg-transparent' : getAvatarColor(user)}`}>
-                            {userPic ? (
-                              <img src={userPic} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                              user.charAt(0).toUpperCase()
-                            )}
-                          </div>
-                          <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{user}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* Messages Area */}
+            <div className={`flex-1 p-4 overflow-y-auto flex flex-col gap-4 custom-scrollbar ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
+              {messages.length === 0 && (
+                <div className={`flex flex-col items-center justify-center h-full ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'}`}>👋</div>
+                  <p>This is the start of the #{room} room.</p>
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className={`flex-1 p-4 md:p-8 overflow-y-auto flex flex-col gap-6 custom-scrollbar ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            {messages.length === 0 && (
-              <div className={`flex flex-col items-center justify-center h-full ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'}`}>👋</div>
-                <p>This is the start of the #{room} room.</p>
-              </div>
-            )}
-            
-            {messages.map((msg, index) => {
-              if (hiddenMessages.includes(msg.id)) return null;
-
-              const isMe = msg.username === username;
-              const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
-              const msgPic = localStorage.getItem(`profile_pic_${msg.username}`);
               
-              const readers = msg.read_by ? msg.read_by.split(',') : [];
-              const hasBeenRead = readers.some(r => r !== msg.username && r.trim() !== '');
+              {messages.map((msg, index) => {
+                if (hiddenMessages.includes(msg.id)) return null;
 
-              return (
-                <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold overflow-hidden ${msgPic ? 'bg-transparent' : getAvatarColor(msg.username)}`}>
-                    {msgPic ? (
-                      <img src={msgPic} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      msg.username.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]`}>
-                    <div className="flex items-center gap-2 mb-1 px-1 flex-wrap">
-                      <span className={`text-xs font-bold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{msg.username}</span>
-                      <span className={`text-[10px] ${theme === 'dark' ? 'text-slate-500' : 'text-slate-500'}`}>
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        {msg.is_edited && <span className="ml-1 italic">(edited)</span>}
-                        
-                        {isMe && hasBeenRead && (
-                          <span className="ml-1 text-blue-500 font-bold" title="Read">
-                            ✓✓
-                          </span>
-                        )}
-                      </span>
+                const isMe = msg.username === username;
+                const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
+                const msgPic = localStorage.getItem(`profile_pic_${msg.username}`);
+                
+                const readers = msg.read_by ? msg.read_by.split(',') : [];
+                const hasBeenRead = readers.some(r => r !== msg.username && r.trim() !== '');
+
+                return (
+                  <div key={msg.id || index} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold overflow-hidden ${msgPic ? 'bg-transparent' : getAvatarColor(msg.username)}`}>
+                      {msgPic ? (
+                        <img src={msgPic} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        msg.username.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%]`}>
+                      <div className="flex items-center gap-1 mb-1 px-1 flex-wrap">
+                        <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{msg.username}</span>
+                        <span className={`text-[9px] ${theme === 'dark' ? 'text-slate-500' : 'text-slate-500'}`}>
+                          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msg.is_edited && <span className="ml-1 italic">(edited)</span>}
+                          {isMe && hasBeenRead && (
+                            <span className="ml-1 text-blue-500 font-bold" title="Read">✓✓</span>
+                          )}
+                        </span>
+                      </div>
+
                       {msg.id && (
-                        <>
-                          <button 
-                            onClick={() => setReplyTo(msg)}
-                            className="text-indigo-400 hover:text-indigo-300 transition text-[10px] font-bold"
-                          >
-                            [Reply]
-                          </button>
+                        <div className="flex items-center gap-2 mb-1">
+                          <button onClick={() => setReplyTo(msg)} className="text-indigo-400 text-[9px] font-bold">[Reply]</button>
                           {isMe && (
                             <>
-                              <button onClick={() => handleEditMessage(msg.id, msg.message)} className="text-yellow-400 hover:text-yellow-300 transition text-[10px] font-bold">[Edit]</button>
-                              
+                              <button onClick={() => handleEditMessage(msg.id, msg.message)} className="text-yellow-400 text-[9px] font-bold">[Edit]</button>
                               <button 
                                 onClick={() => {
                                   openConfirmModal("Delete this message only for yourself?", () => {
                                     setHiddenMessages(prev => [...prev, msg.id]);
                                   });
                                 }} 
-                                className="text-slate-400 hover:text-slate-300 transition text-[10px] font-bold"
+                                className="text-slate-400 text-[9px] font-bold"
                               >
-                                [Delete for me]
+                                [Delete]
                               </button>
-                              
                               <button 
                                 onClick={() => {
                                   openConfirmModal("Unsend this message for everyone?", () => {
                                     handleDeleteMessage(msg.id);
                                   });
                                 }} 
-                                className="text-red-400 hover:text-red-300 transition text-[10px] font-bold"
+                                className="text-red-400 text-[9px] font-bold"
                               >
                                 [Unsend]
                               </button>
                             </>
                           )}
-                        </>
+                        </div>
                       )}
-                    </div>
 
-                    {repliedMessage && (
-                      <div className={`mb-1 px-3 py-1 border-l-2 border-indigo-500 rounded text-xs truncate max-w-full ${theme === 'dark' ? 'bg-slate-800/50 text-slate-400' : 'bg-gray-100 text-slate-600'}`}>
-                        Replying to {repliedMessage.username}: "{repliedMessage.message}"
-                      </div>
-                    )}
+                      {repliedMessage && (
+                        <div className={`mb-1 px-2 py-1 border-l-2 border-indigo-500 rounded text-[10px] truncate max-w-full ${theme === 'dark' ? 'bg-slate-800/50 text-slate-400' : 'bg-gray-100 text-slate-600'}`}>
+                          Replying to {repliedMessage.username}
+                        </div>
+                      )}
 
-                    <div className={`px-4 md:px-5 py-2 md:py-3 rounded-2xl text-sm leading-relaxed chat-bubble ${
-                      isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : theme === 'dark' ? 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm' : 'bg-gray-100 text-slate-900 border border-gray-300 rounded-tl-sm'
-                    } ${msg.message === "⚠️ This message was unsent." ? 'italic opacity-60' : ''}`}>
-                      {msg.message.includes('📎 File:') ? (
-                        /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.message) ? (
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs opacity-75">Sent an image:</span>
+                      <div className={`px-4 py-2 rounded-2xl text-sm leading-relaxed ${
+                        isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : theme === 'dark' ? 'bg-slate-800 text-slate-200 rounded-tl-sm' : 'bg-gray-100 text-slate-900 rounded-tl-sm'
+                      } ${msg.message === "⚠️ This message was unsent." ? 'italic opacity-60' : ''}`}>
+                        {msg.message.includes('📎 File:') ? (
+                          /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.message) ? (
                             <img 
                               src={`https://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`} 
                               alt="Uploaded" 
-                              className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition"
+                              className="max-w-full rounded-lg max-h-48 object-cover"
                               onClick={() => window.open(`https://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`, '_blank')}
                             />
-                          </div>
+                          ) : (
+                            <a href={`https://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`} target="_blank" rel="noopener noreferrer" className="underline">
+                              📄 View File
+                            </a>
+                          )
                         ) : (
-                          <a 
-                            href={`https://tubonge-backend-0d7b.onrender.com${msg.message.replace('📎 File: ', '')}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 underline hover:opacity-80"
-                          >
-                            📄 Click to download/view file
-                          </a>
-                        )
-                      ) : (
-                        msg.message
-                      )}
+                          msg.message
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            
-            {Object.keys(typingUsers).filter(u => u !== username).length > 0 && (
-              <div className={`text-xs italic px-4 pb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
-                {Object.keys(typingUsers).filter(u => u !== username).join(', ')} is typing...
-              </div>
-            )}
-            
-            <div ref={chatEndRef} />
-          </div>
-
-          <div className={`p-4 md:p-6 border-t ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
-            {replyTo && (
-              <div className={`flex justify-between items-center px-4 py-2 border rounded-t-xl text-sm mb-2 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-slate-700'}`}>
-                <span className="truncate">Replying to <strong>{replyTo.username}</strong>: {replyTo.message.substring(0, 30)}...</span>
-                <button onClick={() => setReplyTo(null)} className="text-red-400 hover:text-red-300 font-bold ml-4">✕</button>
-              </div>
-            )}
-            
-            <div className="relative">
-              {showEmojiPicker && (
-                <div className={`absolute bottom-16 left-0 border rounded-xl p-3 shadow-2xl flex flex-wrap gap-2 w-64 z-50 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
-                  {emojis.map((emoji, idx) => (
-                    <button 
-                      key={idx} 
-                      onClick={() => {
-                        setMessage(prev => prev + emoji);
-                        setShowEmojiPicker(false);
-                      }}
-                      className={`text-2xl rounded p-1 transition ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                );
+              })}
+              
+              {Object.keys(typingUsers).filter(u => u !== username).length > 0 && (
+                <div className={`text-xs italic px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {Object.keys(typingUsers).filter(u => u !== username).join(', ')} is typing...
                 </div>
               )}
+              
+              <div ref={chatEndRef} />
             </div>
-            
-            <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-4 items-end">
-              <input 
-                type="file" 
-                onChange={handleFileUpload} 
-                className="hidden" 
-                id="file-upload" 
-              />
-              <label 
-                htmlFor="file-upload" 
-                className={`cursor-pointer px-3 md:px-4 py-3 rounded-2xl flex items-center justify-center transition h-[52px] ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-slate-900'}`}
-              >
-                📎
-              </label>
 
-              <button 
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`px-3 md:px-4 py-3 rounded-2xl flex items-center justify-center transition h-[52px] ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-slate-900'}`}
-              >
-                😀
-              </button>
+            {/* Input Area */}
+            <div className={`p-3 border-t ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
+              {replyTo && (
+                <div className={`flex justify-between items-center px-3 py-1 border rounded-t-lg text-xs mb-1 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-slate-700'}`}>
+                  <span className="truncate">Replying to {replyTo.username}</span>
+                  <button onClick={() => setReplyTo(null)} className="text-red-400 font-bold">✕</button>
+                </div>
+              )}
               
-              <textarea 
-                placeholder={`Message #${room}...`}
-                className={`flex-1 p-4 rounded-2xl focus:outline-none focus:border-indigo-500 transition resize-none h-[52px] max-h-32 overflow-y-auto custom-scrollbar text-sm md:text-base border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-                value={message} 
-                onChange={handleTyping}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); 
-                    handleSendMessage(e); 
-                  }
-                }}
-                disabled={readyState !== 1}
-                rows={1}
-              />
+              <div className="relative">
+                {showEmojiPicker && (
+                  <div className={`absolute bottom-14 left-0 border rounded-xl p-2 shadow-2xl flex flex-wrap gap-1 w-56 z-50 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
+                    {emojis.map((emoji, idx) => (
+                      <button 
+                        key={idx} 
+                        onClick={() => {
+                          setMessage(prev => prev + emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className={`text-xl rounded p-1 transition ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               
-              <button 
-                type="submit" 
-                className="px-4 md:px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold transition text-white disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-2 h-[52px]"
-                disabled={readyState !== 1}
-              >
-                Send
-                <svg className="w-5 h-5 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-              </button>
-            </form>
+              <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
+                <input type="file" onChange={handleFileUpload} className="hidden" id="file-upload" />
+                <label htmlFor="file-upload" className={`cursor-pointer px-3 py-2 rounded-xl flex items-center justify-center transition ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-gray-200 text-slate-900'}`}>
+                  📎
+                </label>
+
+                <button 
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className={`px-3 py-2 rounded-xl flex items-center justify-center transition ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-gray-200 text-slate-900'}`}
+                >
+                  😀
+                </button>
+                
+                <textarea 
+                  placeholder={`Message #${room}...`}
+                  className={`flex-1 p-2 rounded-xl focus:outline-none focus:border-indigo-500 transition resize-none h-[44px] max-h-32 border ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-300 text-slate-900'}`}
+                  value={message} 
+                  onChange={handleTyping}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault(); 
+                      handleSendMessage(e); 
+                    }
+                  }}
+                  disabled={readyState !== 1}
+                  rows={1}
+                />
+                
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold transition text-white disabled:opacity-50 flex items-center h-[44px]"
+                  disabled={readyState !== 1}
+                >
+                  Send
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 
-      {/* SETTINGS MODAL (With Profile Picture) */}
+      {/* --- ALL YOUR MODALS REMAIN EXACTLY THE SAME --- */}
+      
+      {/* SETTINGS MODAL */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
@@ -1209,7 +1061,6 @@ function App() {
             {settingsError && <p className="text-red-400 mb-4 text-sm text-center">{settingsError}</p>}
             {settingsSuccess && <p className="text-green-400 mb-4 text-sm text-center">{settingsSuccess}</p>}
             
-            {/* Profile Picture Section */}
             <div className="flex flex-col items-center mb-6">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl overflow-hidden mb-3 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
                 {profilePic ? (
@@ -1218,51 +1069,19 @@ function App() {
                   username.charAt(0).toUpperCase()
                 )}
               </div>
-              <label 
-                htmlFor="profile-pic-upload" 
-                className="cursor-pointer text-sm text-indigo-400 hover:text-indigo-300 font-bold transition"
-              >
+              <label htmlFor="profile-pic-upload" className="cursor-pointer text-sm text-indigo-400 hover:text-indigo-300 font-bold transition">
                 {uploadingPic ? 'Uploading...' : 'Change Profile Picture'}
               </label>
-              <input 
-                id="profile-pic-upload" 
-                type="file" 
-                accept="image/*" 
-                onChange={handleProfilePicUpload} 
-                className="hidden" 
-              />
+              <input id="profile-pic-upload" type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
             </div>
 
             <div className={`border-t pt-4 ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
               <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Change Password</h3>
               <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-                <input 
-                  type="password" 
-                  placeholder="Current Password" 
-                  className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-                  value={oldPassword} 
-                  onChange={e => setOldPassword(e.target.value)} 
-                  required 
-                />
-                <input 
-                  type="password" 
-                  placeholder="New Password" 
-                  className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-                  value={newPassword} 
-                  onChange={e => setNewPassword(e.target.value)} 
-                  required 
-                />
-                <input 
-                  type="password" 
-                  placeholder="Confirm New Password" 
-                  className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-                  value={confirmPassword} 
-                  onChange={e => setConfirmPassword(e.target.value)} 
-                  required 
-                />
-                <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">
-                  Update Password
-                </button>
+                <input type="password" placeholder="Current Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={oldPassword} onChange={e => setOldPassword(e.target.value)} required />
+                <input type="password" placeholder="New Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                <input type="password" placeholder="Confirm New Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+                <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">Update Password</button>
               </form>
             </div>
           </div>
@@ -1282,17 +1101,8 @@ function App() {
             {manageSuccess && <p className="text-green-400 mb-4 text-sm text-center">{manageSuccess}</p>}
 
             <form onSubmit={handleAddMember} className="flex gap-2 mb-6">
-              <input 
-                type="text" 
-                placeholder="Username to add..." 
-                className={`flex-1 p-3 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-                value={newMemberName}
-                onChange={e => setNewMemberName(e.target.value)}
-                required
-              />
-              <button type="submit" className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition">
-                Add
-              </button>
+              <input type="text" placeholder="Username to add..." className={`flex-1 p-3 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={newMemberName} onChange={e => setNewMemberName(e.target.value)} required />
+              <button type="submit" className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition">Add</button>
             </form>
 
             <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>Current Members</h3>
@@ -1303,25 +1113,13 @@ function App() {
                   <div key={idx} className={`flex justify-between items-center p-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${memberPic ? 'bg-transparent' : getAvatarColor(member.username)}`}>
-                        {memberPic ? (
-                          <img src={memberPic} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          member.username.charAt(0).toUpperCase()
-                        )}
+                        {memberPic ? <img src={memberPic} alt="Avatar" className="w-full h-full object-cover" /> : member.username.charAt(0).toUpperCase()}
                       </div>
                       <span className={`text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{member.username}</span>
-                      {member.role === 'admin' && (
-                        <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Admin</span>
-                      )}
+                      {member.role === 'admin' && <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Admin</span>}
                     </div>
-                    
                     {member.username !== username && (
-                      <button 
-                        onClick={() => handleRemoveMember(member.username)}
-                        className="text-red-400 hover:text-red-300 text-xs font-bold transition"
-                      >
-                        Remove
-                      </button>
+                      <button onClick={() => handleRemoveMember(member.username)} className="text-red-400 hover:text-red-300 text-xs font-bold transition">Remove</button>
                     )}
                   </div>
                 );
@@ -1331,93 +1129,45 @@ function App() {
         </div>
       )}
 
-      {/* NEW: CUSTOM DM MODAL */}
+      {/* CUSTOM DM MODAL */}
       {showDmModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
             <h2 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>New Direct Message</h2>
             <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Enter the username of the person you want to chat with.</p>
-            
-            <input 
-              type="text" 
-              placeholder="Username" 
-              className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 transition mb-4 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-              value={dmTargetUser}
-              onChange={(e) => setDmTargetUser(e.target.value)}
-              autoFocus
-            />
-            
+            <input type="text" placeholder="Username" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 transition mb-4 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={dmTargetUser} onChange={(e) => setDmTargetUser(e.target.value)} autoFocus />
             {dmError && <p className="text-red-400 mb-4 text-sm">{dmError}</p>}
-
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => { setShowDmModal(false); setDmTargetUser(''); setDmError(''); }}
-                className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleStartDm}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30"
-              >
-                Start Chat
-              </button>
+              <button onClick={() => { setShowDmModal(false); setDmTargetUser(''); setDmError(''); }} className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Cancel</button>
+              <button onClick={handleStartDm} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30">Start Chat</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* NEW: CUSTOM EDIT MODAL */}
+      {/* CUSTOM EDIT MODAL */}
       {editModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
             <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Edit Message</h2>
-            <textarea 
-              className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 transition resize-none h-32 mb-4 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`}
-              value={editMessageText}
-              onChange={(e) => setEditMessageText(e.target.value)}
-              autoFocus
-            />
+            <textarea className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 transition resize-none h-32 mb-4 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={editMessageText} onChange={(e) => setEditMessageText(e.target.value)} autoFocus />
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setEditModalOpen(false)}
-                className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={saveEditedMessage}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30"
-              >
-                Save Changes
-              </button>
+              <button onClick={() => setEditModalOpen(false)} className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Cancel</button>
+              <button onClick={saveEditedMessage} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition shadow-lg shadow-indigo-500/30">Save Changes</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* NEW: CUSTOM CONFIRM MODAL */}
+      {/* CUSTOM CONFIRM MODAL */}
       {confirmModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
             <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Are you sure?</h2>
             <p className={`mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{confirmMessage}</p>
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setConfirmModalOpen(false)}
-                className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  if (confirmAction) confirmAction();
-                  setConfirmModalOpen(false);
-                }}
-                className="px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-bold transition shadow-lg shadow-red-500/30"
-              >
-                Yes, Proceed
-              </button>
+              <button onClick={() => setConfirmModalOpen(false)} className={`px-6 py-3 font-bold transition ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Cancel</button>
+              <button onClick={() => { if (confirmAction) confirmAction(); setConfirmModalOpen(false); }} className="px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-bold transition shadow-lg shadow-red-500/30">Yes, Proceed</button>
             </div>
           </div>
         </div>

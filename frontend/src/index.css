@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #0f172a; /* Dark slate background */
-  color: #f8fafc;
-}
+/* We removed the hard-coded body colors. 
+   The theme toggle in App.jsx will now handle the background 
+   and text color dynamically. */
+
 .chat-bubble {
   overflow-wrap: break-word;
   word-wrap: break-word;
