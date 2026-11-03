@@ -13,17 +13,14 @@
 ## ✨ Features
 
 *   **Real-Time Messaging:** Instant message delivery using Django Channels and WebSockets.
-*   **Direct Messaging (DMs):** Private 1-on-1 conversations with strict validation (no ghost accounts).
-*   **Message Management:** 
-    *   ✏️ **Edit** sent messages.
-    *   🗑️ **Delete for Me** (hides the message only on your screen).
-    *   🚫 **Unsend for Everyone** (replaces the message with a "This message was unsent" notice for both users).
+*   **Direct Messaging (DMs):** Private 1-on-1 conversations with strict validation.
+*   **Message Management:** Edit sent messages, delete for yourself, or unsend for everyone.
 *   **Read Receipts:** Double blue checkmarks (✓✓) when the other user reads your message.
 *   **Emoji Picker:** A built-in emoji menu for quick reactions.
-*   **Profile Pictures:** Upload custom avatars (stored locally as Base64 for speed and reliability).
+*   **Profile Pictures:** Upload custom avatars (stored locally as Base64).
 *   **Dark/Light Mode:** A beautiful theme toggle that saves your preference.
 *   **Unread Badges:** Red notification dots for rooms with new messages.
-*   **Mobile-First Layout:** A responsive, WhatsApp-style vertical chat list that adapts perfectly to mobile screens.
+*   **Mobile-First Layout:** A responsive, WhatsApp-style vertical chat list.
 *   **Typing Indicators:** See when the other person is typing.
 *   **Online Presence:** Live tracking of who is currently in the room.
 *   **Secure Auth:** Registration, Login, and Password Reset using security questions.
@@ -32,18 +29,13 @@
 
 ## 🛠️ Tech Stack
 
-### Frontend
-*   **React.js** (Vite)
-*   **Tailwind CSS** (Styling)
-*   **WebSocket API** (Real-time communication)
-*   **Vercel** (Hosting)
-
-### Backend
-*   **Django** & **Django REST Framework**
-*   **Django Channels** (WebSockets)
-*   **Redis** (Channel Layer for WebSockets)
-*   **PostgreSQL** (Neon Database)
-*   **Render** (Hosting)
+| Frontend | Backend |
+| :--- | :--- |
+| React.js (Vite) | Django & Django REST Framework |
+| Tailwind CSS | Django Channels (WebSockets) |
+| WebSocket API | Redis (Channel Layer) |
+| Vercel (Hosting) | PostgreSQL (Neon) |
+| | Render (Hosting) |
 
 ---
 
@@ -75,17 +67,17 @@ Node.js 18+
 Redis (optional, but recommended for local WebSockets)
 
 1. Backend Setup (Django)
+Open a terminal and run the following commands:
+
 bash
 # Clone the repository
-git clone https://github.com/your-username/realtime-chat-app.git
+git clone https://github.com/law85/realtime-chat-app.git
 cd realtime-chat-app
 
 # Create and activate virtual environment
 python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
+venv\Scripts\activate   # Windows
+# source venv/bin/activate  # Mac/Linux
 
 # Install dependencies
 pip install -r requirements.txt
@@ -99,8 +91,10 @@ python manage.py runserver
 The backend will run on http://127.0.0.1:8000
 
 2. Frontend Setup (React)
+Open a new terminal window and run:
+
 bash
-# Open a new terminal and navigate to the frontend folder
+# Navigate to the frontend folder
 cd frontend
 
 # Install dependencies
@@ -116,22 +110,18 @@ Create a Web Service on Render.
 
 Connect your GitHub repository.
 
-Set Build Command to ./build.sh.
+Set the Build Command to: ./build.sh
 
-Set Start Command to daphne -b 0.0.0.0 -p $PORT chatcore.asgi:application.
+Set the Start Command to: daphne -b 0.0.0.0 -p $PORT chatcore.asgi:application
 
-Add Environment Variables:
+Add the following Environment Variables:
 
-SECRET_KEY: (Your Django secret key)
-
-DATABASE_URL: (Neon PostgreSQL URL)
-
-REDIS_URL: (Render Key Value / Redis URL)
-
-DEBUG: False
-
-ALLOWED_HOSTS: your-backend-url.onrender.com
-
+Key	Value
+SECRET_KEY	Your Django Secret Key
+DATABASE_URL	Neon PostgreSQL URL
+REDIS_URL	Render Key Value / Redis URL
+DEBUG	False
+ALLOWED_HOSTS	your-backend-url.onrender.com
 Frontend (Vercel)
 Create a New Project on Vercel.
 
@@ -150,4 +140,4 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 This project is licensed under the MIT License.
 
 Built with ❤️ by Simiyu Lawrence
-contact 0748820547
+Contact: 0748820547
