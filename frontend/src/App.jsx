@@ -66,6 +66,10 @@ function App() {
     localStorage.setItem('theme', newTheme);
   };
 
+  // --- NEW: 3-Dots Menu & Settings Tabs State ---
+  const [showMenu, setShowMenu] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('profile'); // 'profile' or 'password'
+
   const ws = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -415,6 +419,14 @@ function App() {
     if (ws.current) ws.current.close();
   };
 
+  // NEW: Logout Confirmation
+  const confirmLogout = () => {
+    setShowMenu(false);
+    openConfirmModal("Are you sure you want to log out?", () => {
+      handleLogout();
+    });
+  };
+
   const handleTyping = (e) => {
     setMessage(e.target.value);
     
@@ -742,27 +754,38 @@ function App() {
       <div className={`w-full max-w-2xl flex flex-col h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
         
         {/* ================= TOP HEADER (Replaces Sidebar) ================= */}
-        <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
+        <div className={`p-4 border-b relative ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-300'}`}>
           
-          {/* Row 1: Title, Theme Toggle, Profile */}
+          {/* Row 1: Title, 3-Dots Menu */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">#</div>
               <h2 className={`text-xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>TubongeApp</h2>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* 3-Dots Menu Button */}
+            <div className="relative">
               <button 
-                onClick={toggleTheme}
-                className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-yellow-400' : 'bg-gray-200 text-slate-800'}`}
+                onClick={() => setShowMenu(!showMenu)}
+                className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-600'}`}
               >
-                {theme === 'dark' ? '☀️' : '🌙'}
+                ⋮
               </button>
-              <button onClick={() => setShowSettings(true)} className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-600'}`}>
-                ⚙️
-              </button>
-              <button onClick={handleLogout} className={`p-2 rounded-lg transition ${theme === 'dark' ? 'bg-slate-800 text-red-400' : 'bg-gray-200 text-red-500'}`}>
-                🚪
-              </button>
+              
+              {/* Dropdown Menu */}
+              {showMenu && (
+                <div className={`absolute right-0 top-12 w-48 rounded-xl shadow-2xl border z-50 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+                  <button onClick={() => { toggleTheme(); setShowMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm transition ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-100 text-slate-700'}`}>
+                    {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                  </button>
+                  <button onClick={() => { setShowSettings(true); setShowMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm transition ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-100 text-slate-700'}`}>
+                    ⚙️ Settings
+                  </button>
+                  <button onClick={confirmLogout} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm transition ${theme === 'dark' ? 'hover:bg-slate-800 text-red-400' : 'hover:bg-gray-100 text-red-500'}`}>
+                    🚪 Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1047,9 +1070,9 @@ function App() {
 
       </div>
 
-      {/* --- ALL YOUR MODALS REMAIN EXACTLY THE SAME --- */}
+      {/* --- ALL YOUR MODALS --- */}
       
-      {/* SETTINGS MODAL */}
+      {/* SETTINGS MODAL (With Tabs) */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
@@ -1060,30 +1083,49 @@ function App() {
             
             {settingsError && <p className="text-red-400 mb-4 text-sm text-center">{settingsError}</p>}
             {settingsSuccess && <p className="text-green-400 mb-4 text-sm text-center">{settingsSuccess}</p>}
-            
-            <div className="flex flex-col items-center mb-6">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl overflow-hidden mb-3 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
-                {profilePic ? (
-                  <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  username.charAt(0).toUpperCase()
-                )}
-              </div>
-              <label htmlFor="profile-pic-upload" className="cursor-pointer text-sm text-indigo-400 hover:text-indigo-300 font-bold transition">
-                {uploadingPic ? 'Uploading...' : 'Change Profile Picture'}
-              </label>
-              <input id="profile-pic-upload" type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
-            </div>
 
-            <div className={`border-t pt-4 ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
-              <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Change Password</h3>
+            {/* Tabs */}
+            <div className={`flex border-b mb-6 ${theme === 'dark' ? 'border-slate-800' : 'border-gray-300'}`}>
+              <button 
+                onClick={() => setSettingsTab('profile')}
+                className={`flex-1 py-3 text-sm font-bold border-b-2 transition ${settingsTab === 'profile' ? 'border-indigo-500 text-indigo-400' : theme === 'dark' ? 'border-transparent text-slate-500 hover:text-slate-300' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              >
+                Profile
+              </button>
+              <button 
+                onClick={() => setSettingsTab('password')}
+                className={`flex-1 py-3 text-sm font-bold border-b-2 transition ${settingsTab === 'password' ? 'border-indigo-500 text-indigo-400' : theme === 'dark' ? 'border-transparent text-slate-500 hover:text-slate-300' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              >
+                Password
+              </button>
+            </div>
+            
+            {/* Profile Tab */}
+            {settingsTab === 'profile' && (
+              <div className="flex flex-col items-center">
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center text-white font-bold text-4xl overflow-hidden mb-4 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+                  {profilePic ? (
+                    <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    username.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <label htmlFor="profile-pic-upload" className="cursor-pointer px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition">
+                  {uploadingPic ? 'Uploading...' : 'Change Profile Picture'}
+                </label>
+                <input id="profile-pic-upload" type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
+              </div>
+            )}
+
+            {/* Password Tab */}
+            {settingsTab === 'password' && (
               <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
                 <input type="password" placeholder="Current Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={oldPassword} onChange={e => setOldPassword(e.target.value)} required />
                 <input type="password" placeholder="New Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
                 <input type="password" placeholder="Confirm New Password" className={`w-full p-4 rounded-xl focus:outline-none focus:border-indigo-500 border ${theme === 'dark' ? 'bg-slate-950 border-slate-800 text-white' : 'bg-gray-50 border-gray-300 text-slate-900'}`} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
                 <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">Update Password</button>
               </form>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1159,7 +1201,7 @@ function App() {
         </div>
       )}
 
-      {/* CUSTOM CONFIRM MODAL */}
+      {/* CUSTOM CONFIRM MODAL (Used for Logout & Delete) */}
       {confirmModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`p-8 rounded-3xl shadow-2xl w-full max-w-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300'}`}>
