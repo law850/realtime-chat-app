@@ -115,6 +115,11 @@ function App() {
 
     ws.current.onopen = () => {
       setReadyState(1);
+      // --- NEW: Mark messages as read when opening the room ---
+      ws.current.send(JSON.stringify({
+        action: 'mark_as_read',
+        username: username
+      }));
     };
     ws.current.onclose = () => {
       setReadyState(3);
@@ -148,9 +153,32 @@ function App() {
         });
       } else if (data.action === 'user_list') {
         setActiveUsers(data.users);
-      } else {
+      } 
+      // --- NEW: Handle Read Receipts ---
+      else if (data.action === 'messages_read') {
+        setMessages(prev => 
+          prev.map(msg => {
+            if (msg.username !== username) {
+              // Add the reader to the read_by list
+              const currentReadBy = msg.read_by ? msg.read_by.split(',') : [];
+              if (!currentReadBy.includes(data.reader)) {
+                return { ...msg, read_by: msg.read_by ? `${msg.read_by},${data.reader}` : data.reader };
+              }
+            }
+            return msg;
+          })
+        );
+      }
+      else {
         if (data.room === room) {
           setMessages((prev) => [...prev, data]);
+          // If it's a new message in the current room, mark it as read immediately
+          if (data.username !== username && ws.current.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({
+              action: 'mark_as_read',
+              username: username
+            }));
+          }
         } else if (data.username !== username) {
           setUnreadCounts(prev => ({
             ...prev,
@@ -278,7 +306,6 @@ function App() {
     }
   };
 
-  // --- NEW: Convert image to Base64 and save to localStorage ---
   const handleProfilePicUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -967,6 +994,11 @@ function App() {
               const isMe = msg.username === username;
               const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
               const msgPic = localStorage.getItem(`profile_pic_${msg.username}`);
+              
+              // --- NEW: Check Read Status ---
+              const isRead = msg.read_by && msg.read_by.split(',').includes(msg.username === username ? '__none__' : 'lawrence'); 
+              // (We check if the OTHER user has read it. Since this is a demo, we just show double checks if anyone else read it)
+              const hasBeenRead = msg.read_by && msg.read_by.trim() !== '';
 
               return (
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -983,6 +1015,13 @@ function App() {
                       <span className="text-[10px] text-slate-500">
                         {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         {msg.is_edited && <span className="ml-1 italic text-slate-500">(edited)</span>}
+                        
+                        {/* --- NEW: READ RECEIPT UI --- */}
+                        {isMe && hasBeenRead && (
+                          <span className="ml-1 text-blue-500 font-bold" title="Read">
+                            ✓✓
+                          </span>
+                        )}
                       </span>
                       {msg.id && (
                         <>

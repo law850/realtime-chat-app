@@ -33,6 +33,10 @@ class Message(models.Model):
     # --- NEW FIELD ADDED HERE ---
     is_edited = models.BooleanField(default=False) 
 
+    # --- NEW: Read Receipts Field ---
+    # Stores a comma-separated list of usernames who have read the message
+    read_by = models.TextField(default='', blank=True)
+
     def __str__(self):
         return f"{self.username}: {self.content[:20]}"
 

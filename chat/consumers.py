@@ -106,6 +106,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             
+        # --- NEW: Mark messages as read ---
+        elif action == 'mark_as_read':
+            reader = text_data_json.get('username', self.username)
+            
+            await self.mark_messages_as_read(self.room_name, reader)
+            
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'messages_read',
+                    'reader': reader
+                }
+            )
+        # -----------------------------------
+            
         else:
             message = text_data_json['message']
             username = text_data_json.get('username', 'Anonymous')
@@ -123,12 +138,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'username': username,
                     'room': self.room_name,
                     'reply_to': reply_to_id,
-                    'is_edited': False # Explicitly false for new messages
+                    'is_edited': False,
+                    'read_by': username # The sender has obviously read it
                 }
             )
 
-            # --- FIXED: Only send unread notifications for PUBLIC rooms, NOT DMs ---
-            # Direct Messages have a hyphen in their name (e.g., "mary-shad")
+            # --- Only send unread notifications for PUBLIC rooms, NOT DMs ---
             if '-' not in self.room_name:
                 await self.channel_layer.group_send(
                     'global_notifications',
@@ -146,12 +161,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'username': event['username'],
             'room': event['room'],
             'reply_to': event.get('reply_to'),
-            'is_edited': event.get('is_edited', False)
+            'is_edited': event.get('is_edited', False),
+            'read_by': event.get('read_by', '') # Pass read status to frontend
         }))
 
     async def message_unsent(self, event):
         await self.send(text_data=json.dumps({
-            'action': 'delete', # Frontend still listens for 'delete'
+            'action': 'delete',
             'id': event['id']
         }))
 
@@ -160,7 +176,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'action': 'edit',
             'id': event['id'],
             'message': event['message'],
-            'is_edited': True # Tell frontend it's edited
+            'is_edited': True
         }))
 
     async def user_typing(self, event):
@@ -169,6 +185,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'username': event['username'],
             'is_typing': event['is_typing']
         }))
+
+    # --- NEW: Messages Read Handler ---
+    async def messages_read(self, event):
+        await self.send(text_data=json.dumps({
+            'action': 'messages_read',
+            'reader': event['reader']
+        }))
+    # ---------------------------------
 
     # --- PRESENCE: Helper Methods ---
     async def broadcast_user_list(self):
@@ -202,7 +226,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             username=username, 
             room=room, 
             content=content, 
-            reply_to_id=reply_to_id
+            reply_to_id=reply_to_id,
+            read_by=username # Sender has read their own message
         )
         return msg.id
 
@@ -212,13 +237,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def edit_message_in_db(self, message_id, new_content):
-        # Added is_edited=True
         Message.objects.filter(id=message_id).update(content=new_content, is_edited=True)
+
+    # --- NEW: Mark messages as read in DB ---
+    @database_sync_to_async
+    def mark_messages_as_read(self, room, reader):
+        messages = Message.objects.filter(room=room).exclude(read_by__contains=reader)
+        for msg in messages:
+            if msg.read_by:
+                msg.read_by += f",{reader}"
+            else:
+                msg.read_by = reader
+            msg.save()
+    # ----------------------------------------
 
     @database_sync_to_async
     def get_history(self):
-        # Added 'is_edited' to the values list
-        messages = list(Message.objects.filter(room=self.room_name).order_by('-timestamp')[:50].values('id', 'username', 'content', 'reply_to', 'is_edited'))
+        # Added 'read_by' to the values list
+        messages = list(Message.objects.filter(room=self.room_name).order_by('-timestamp')[:50].values('id', 'username', 'content', 'reply_to', 'is_edited', 'read_by'))
         return messages[::-1] 
 
     async def send_history(self):
@@ -230,7 +266,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'username': msg['username'],
                 'room': self.room_name,
                 'reply_to': msg['reply_to'],
-                'is_edited': msg['is_edited'] # Pass it to frontend
+                'is_edited': msg['is_edited'],
+                'read_by': msg['read_by'] # Pass it to frontend
             }))
 
 
