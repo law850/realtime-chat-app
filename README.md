@@ -58,86 +58,91 @@ realtime-chat/
     │   └── main.jsx
     ├── package.json
     └── vite.config.js
-🚀 Local Development Setup
-Prerequisites
-Python 3.10+
 
-Node.js 18+
 
-Redis (optional, but recommended for local WebSockets)
+      ##  Local Development Setup
+*   **Prerequisites
+*   **Python 3.10+
 
-1. Backend Setup (Django)
-Open a terminal and run the following commands:
+*   **Node.js 18+
 
-bash
-# Clone the repository
-git clone https://github.com/law85/realtime-chat-app.git
-cd realtime-chat-app
+*   **Redis (optional, but recommended for local WebSockets)
 
-# Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate   # Windows
+    ##1. Backend Setup (Django)
+*   **Open a terminal and run the following commands:
+
+*   **bash
+     ## Clone the repository
+*   **git clone https://github.com/law85/realtime-chat-app.git
+*   **cd realtime-chat-app
+
+##  Create and activate virtual environment
+*   **python -m venv venv
+*   **venv\Scripts\activate   # Windows
 # source venv/bin/activate  # Mac/Linux
 
-# Install dependencies
-pip install -r requirements.txt
+## Install dependencies
+*   **pip install -r requirements.txt
 
-# Run migrations
-python manage.py makemigrations
-python manage.py migrate
+## Run migrations
+*   **python manage.py makemigrations
+*   **python manage.py migrate
 
-# Start the server
-python manage.py runserver
-The backend will run on http://127.0.0.1:8000
+## Start the server
+*   **python manage.py runserver
+*   **The backend will run on http://127.0.0.1:8000
 
-2. Frontend Setup (React)
-Open a new terminal window and run:
+   ## 2. Frontend Setup (React)
+*   **Open a new terminal window and run:
 
-bash
-# Navigate to the frontend folder
-cd frontend
+*   **bash
+## Navigate to the frontend folder
+*   **cd frontend
 
-# Install dependencies
-npm install
+## Install dependencies
+*   **npm install
 
-# Start the development server
-npm run dev
-The frontend will run on http://localhost:5173
+## Start the development server
+*   **npm run dev
+*   **The frontend will run on http://localhost:5173
 
-🌍 Deployment Guide
-Backend (Render)
-Create a Web Service on Render.
+# 🌍 Deployment Guide
+*   **Backend (Render)
+*   **Create a Web Service on Render.
 
-Connect your GitHub repository.
+*   **Connect your GitHub repository.
 
-Set the Build Command to: ./build.sh
+*   **Set the Build Command to: ./build.sh
 
-Set the Start Command to: daphne -b 0.0.0.0 -p $PORT chatcore.asgi:application
+*   **Set the Start Command to: daphne -b 0.0.0.0 -p $PORT chatcore.asgi:application
 
-Add the following Environment Variables:
+## Add the following Environment Variables:
 
-Key	Value
-SECRET_KEY	Your Django Secret Key
-DATABASE_URL	Neon PostgreSQL URL
-REDIS_URL	Render Key Value / Redis URL
-DEBUG	False
-ALLOWED_HOSTS	your-backend-url.onrender.com
-Frontend (Vercel)
-Create a New Project on Vercel.
+*   **Key	Value
+*   **SECRET_KEY	Your Django Secret Key
+*   **DATABASE_URL	Neon PostgreSQL URL
+*   **REDIS_URL	Render Key Value / Redis URL
+*   **DEBUG	False
+*   **ALLOWED_HOSTS	your-backend-url.onrender.com
+*   **Frontend (Vercel)
+*   **Create a New Project on Vercel.
 
-Import your GitHub repository.
+*   **Import your GitHub repository.
 
-Set Root Directory to frontend.
+*   **Set Root Directory to frontend.
 
-Update your App.jsx API URLs to point to your live Render backend (e.g., https://your-backend-url.onrender.com).
+*   **Update your App.jsx API URLs to point to your live Render backend (e.g., https://your-backend-url.onrender.com).
 
-Deploy!
+# Deploy!
 
-🤝 Contributing
+## 🤝 Contributing
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
 
-📝 License
+# 📝 License
 This project is licensed under the MIT License.
+
+## Built with ❤️ by Simiyu Lawrence
+#Contact: 0748820547
 
 Built with ❤️ by Simiyu Lawrence
 Contact: 0748820547
