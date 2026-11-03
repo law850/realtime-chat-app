@@ -998,7 +998,9 @@ function App() {
               // --- NEW: Check Read Status ---
               const isRead = msg.read_by && msg.read_by.split(',').includes(msg.username === username ? '__none__' : 'lawrence'); 
               // (We check if the OTHER user has read it. Since this is a demo, we just show double checks if anyone else read it)
-              const hasBeenRead = msg.read_by && msg.read_by.trim() !== '';
+              // Check if anyone OTHER than the sender has read the message
+                   const readers = msg.read_by ? msg.read_by.split(',') : [];
+                   const hasBeenRead = readers.some(r => r !== msg.username && r.trim() !== '');
 
               return (
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
