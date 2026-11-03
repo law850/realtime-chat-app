@@ -45,7 +45,6 @@ function App() {
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
   
-  // --- NEW: Profile Picture State ---
   const [profilePic, setProfilePic] = useState(localStorage.getItem(`profile_pic_${username}`) || null);
   const [uploadingPic, setUploadingPic] = useState(false);
 
@@ -72,7 +71,6 @@ function App() {
       setToken(savedToken);
       if (savedUsername) {
         setUsername(savedUsername);
-        // Load profile pic for saved user
         const savedPic = localStorage.getItem(`profile_pic_${savedUsername}`);
         if (savedPic) setProfilePic(savedPic);
       }
@@ -98,7 +96,6 @@ function App() {
   useEffect(() => {
     if (username) {
       fetchRooms();
-      // Load profile pic when username changes
       const savedPic = localStorage.getItem(`profile_pic_${username}`);
       if (savedPic) setProfilePic(savedPic);
     }
@@ -118,11 +115,9 @@ function App() {
 
     ws.current.onopen = () => {
       setReadyState(1);
-      console.log("WebSocket Connected");
     };
     ws.current.onclose = () => {
       setReadyState(3);
-      console.log("WebSocket Disconnected");
     };
     ws.current.onerror = () => setReadyState(3);
 
@@ -283,8 +278,8 @@ function App() {
     }
   };
 
-  // --- NEW: Profile Picture Upload Handler ---
-  const handleProfilePicUpload = async (e) => {
+  // --- NEW: Convert image to Base64 and save to localStorage ---
+  const handleProfilePicUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -292,30 +287,19 @@ function App() {
     setSettingsError('');
     setSettingsSuccess('');
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('https://tubonge-backend-0d7b.onrender.com/api/upload/', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const data = await res.json();
-      
-      if (data.url) {
-        // Save to localStorage
-        localStorage.setItem(`profile_pic_${username}`, data.url);
-        setProfilePic(data.url);
-        setSettingsSuccess('Profile picture updated!');
-      } else {
-        setSettingsError('Failed to upload image.');
-      }
-    } catch (err) {
-      setSettingsError('Server error during upload.');
-    } finally {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      localStorage.setItem(`profile_pic_${username}`, base64String);
+      setProfilePic(base64String);
+      setSettingsSuccess('Profile picture updated!');
       setUploadingPic(false);
-    }
+    };
+    reader.onerror = () => {
+      setSettingsError('Failed to read file.');
+      setUploadingPic(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const checkAdminStatus = async () => {
@@ -777,9 +761,9 @@ function App() {
 
             <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
                   {profilePic ? (
-                    <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     username.charAt(0).toUpperCase()
                   )}
@@ -887,9 +871,9 @@ function App() {
 
           <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
                 {profilePic ? (
-                  <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   username.charAt(0).toUpperCase()
                 )}
@@ -952,9 +936,9 @@ function App() {
                       const userPic = localStorage.getItem(`profile_pic_${user}`);
                       return (
                         <div key={idx} className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold overflow-hidden ${userPic ? 'bg-transparent' : getAvatarColor(user)}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold overflow-hidden flex-shrink-0 ${userPic ? 'bg-transparent' : getAvatarColor(user)}`}>
                             {userPic ? (
-                              <img src={`https://tubonge-backend-0d7b.onrender.com${userPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                              <img src={userPic} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
                               user.charAt(0).toUpperCase()
                             )}
@@ -988,7 +972,7 @@ function App() {
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold overflow-hidden ${msgPic ? 'bg-transparent' : getAvatarColor(msg.username)}`}>
                     {msgPic ? (
-                      <img src={`https://tubonge-backend-0d7b.onrender.com${msgPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                      <img src={msgPic} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       msg.username.charAt(0).toUpperCase()
                     )}
@@ -1181,7 +1165,7 @@ function App() {
             <div className="flex flex-col items-center mb-6">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl overflow-hidden mb-3 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
                 {profilePic ? (
-                  <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={profilePic} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   username.charAt(0).toUpperCase()
                 )}
@@ -1270,9 +1254,9 @@ function App() {
                 return (
                   <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${memberPic ? 'bg-transparent' : getAvatarColor(member.username)}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 ${memberPic ? 'bg-transparent' : getAvatarColor(member.username)}`}>
                         {memberPic ? (
-                          <img src={`https://tubonge-backend-0d7b.onrender.com${memberPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                          <img src={memberPic} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                           member.username.charAt(0).toUpperCase()
                         )}
