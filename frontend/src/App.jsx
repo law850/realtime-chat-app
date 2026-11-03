@@ -52,6 +52,10 @@ function App() {
   const [manageError, setManageError] = useState('');
   const [manageSuccess, setManageSuccess] = useState('');
   
+  // --- NEW: Emoji Picker State ---
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojis = ['😀', '😂', '😍', '😎', '😭', '👍', '👎', '❤️', '🔥', '🎉', '🙏', '💯', '🤔', '👀', '🙌'];
+
   const ws = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -91,11 +95,9 @@ function App() {
     }
   }, [username]); 
 
-  // --- FIXED WEBSOCKET LOGIC ---
   useEffect(() => {
     if (!isLoggedIn) return; 
 
-    // Only connect if we aren't already connected to the same room
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         return; 
     }
@@ -387,6 +389,7 @@ function App() {
 
     setMessage('');
     setReplyTo(null);
+    setShowEmojiPicker(false); // Close emoji picker on send
     
     ws.current.send(JSON.stringify({
       action: 'typing',
@@ -1027,6 +1030,26 @@ function App() {
               </div>
             )}
             
+            {/* --- NEW: EMOJI PICKER UI --- */}
+            <div className="relative">
+              {showEmojiPicker && (
+                <div className="absolute bottom-16 left-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-2xl flex flex-wrap gap-2 w-64 z-50">
+                  {emojis.map((emoji, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => {
+                        setMessage(prev => prev + emoji);
+                        setShowEmojiPicker(false);
+                      }}
+                      className="text-2xl hover:bg-slate-700 rounded p-1 transition"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
             <form onSubmit={handleSendMessage} className="flex gap-2 md:gap-4 items-end">
               <input 
                 type="file" 
@@ -1040,6 +1063,15 @@ function App() {
               >
                 📎
               </label>
+
+              {/* NEW: Emoji Toggle Button */}
+              <button 
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="px-3 md:px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl flex items-center justify-center text-white transition h-[52px]"
+              >
+                😀
+              </button>
               
               <textarea 
                 placeholder={`Message #${room}...`}
