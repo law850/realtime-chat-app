@@ -44,6 +44,10 @@ function App() {
   const [newPassword, setNewPassword] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
+  
+  // --- NEW: Profile Picture State ---
+  const [profilePic, setProfilePic] = useState(localStorage.getItem(`profile_pic_${username}`) || null);
+  const [uploadingPic, setUploadingPic] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
@@ -52,7 +56,6 @@ function App() {
   const [manageError, setManageError] = useState('');
   const [manageSuccess, setManageSuccess] = useState('');
   
-  // --- NEW: Emoji Picker State ---
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojis = ['😀', '😂', '😍', '😎', '😭', '👍', '👎', '❤️', '🔥', '🎉', '🙏', '💯', '🤔', '👀', '🙌'];
 
@@ -69,6 +72,9 @@ function App() {
       setToken(savedToken);
       if (savedUsername) {
         setUsername(savedUsername);
+        // Load profile pic for saved user
+        const savedPic = localStorage.getItem(`profile_pic_${savedUsername}`);
+        if (savedPic) setProfilePic(savedPic);
       }
       setIsLoggedIn(true);
     }
@@ -92,6 +98,9 @@ function App() {
   useEffect(() => {
     if (username) {
       fetchRooms();
+      // Load profile pic when username changes
+      const savedPic = localStorage.getItem(`profile_pic_${username}`);
+      if (savedPic) setProfilePic(savedPic);
     }
   }, [username]); 
 
@@ -274,6 +283,41 @@ function App() {
     }
   };
 
+  // --- NEW: Profile Picture Upload Handler ---
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setUploadingPic(true);
+    setSettingsError('');
+    setSettingsSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('https://tubonge-backend-0d7b.onrender.com/api/upload/', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.url) {
+        // Save to localStorage
+        localStorage.setItem(`profile_pic_${username}`, data.url);
+        setProfilePic(data.url);
+        setSettingsSuccess('Profile picture updated!');
+      } else {
+        setSettingsError('Failed to upload image.');
+      }
+    } catch (err) {
+      setSettingsError('Server error during upload.');
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
   const checkAdminStatus = async () => {
     try {
       const res = await fetch(`https://tubonge-backend-0d7b.onrender.com/api/check-admin/?username=${username}&room=${room}`);
@@ -352,6 +396,7 @@ function App() {
     setIsLoggedIn(false);
     setUsername('');
     setPassword('');
+    setProfilePic(null);
     if (ws.current) ws.current.close();
   };
 
@@ -389,7 +434,7 @@ function App() {
 
     setMessage('');
     setReplyTo(null);
-    setShowEmojiPicker(false); // Close emoji picker on send
+    setShowEmojiPicker(false); 
     
     ws.current.send(JSON.stringify({
       action: 'typing',
@@ -732,8 +777,12 @@ function App() {
 
             <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
-                  {username.charAt(0).toUpperCase()}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+                  {profilePic ? (
+                    <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    username.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-white truncate">{username}</p>
@@ -838,8 +887,12 @@ function App() {
 
           <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(username)}`}>
-                {username.charAt(0).toUpperCase()}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+                {profilePic ? (
+                  <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  username.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-bold text-white truncate">{username}</p>
@@ -895,14 +948,21 @@ function App() {
                 <div className="absolute right-0 top-12 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 z-50">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Active Members</h3>
                   <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
-                    {activeUsers.map((user, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold ${getAvatarColor(user)}`}>
-                          {user.charAt(0).toUpperCase()}
+                    {activeUsers.map((user, idx) => {
+                      const userPic = localStorage.getItem(`profile_pic_${user}`);
+                      return (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold overflow-hidden ${userPic ? 'bg-transparent' : getAvatarColor(user)}`}>
+                            {userPic ? (
+                              <img src={`https://tubonge-backend-0d7b.onrender.com${userPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              user.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <span className="text-sm text-slate-300">{user}</span>
                         </div>
-                        <span className="text-sm text-slate-300">{user}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -922,11 +982,16 @@ function App() {
 
               const isMe = msg.username === username;
               const repliedMessage = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
+              const msgPic = localStorage.getItem(`profile_pic_${msg.username}`);
 
               return (
                 <div key={msg.id || index} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold ${getAvatarColor(msg.username)}`}>
-                                        {msg.username.charAt(0).toUpperCase()}
+                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold overflow-hidden ${msgPic ? 'bg-transparent' : getAvatarColor(msg.username)}`}>
+                    {msgPic ? (
+                      <img src={`https://tubonge-backend-0d7b.onrender.com${msgPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      msg.username.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]`}>
                     <div className="flex items-center gap-2 mb-1 px-1 flex-wrap">
@@ -1030,7 +1095,6 @@ function App() {
               </div>
             )}
             
-            {/* --- NEW: EMOJI PICKER UI --- */}
             <div className="relative">
               {showEmojiPicker && (
                 <div className="absolute bottom-16 left-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-2xl flex flex-wrap gap-2 w-64 z-50">
@@ -1064,7 +1128,6 @@ function App() {
                 📎
               </label>
 
-              {/* NEW: Emoji Toggle Button */}
               <button 
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1102,47 +1165,74 @@ function App() {
 
       </div>
 
-      {/* SETTINGS MODAL */}
+      {/* SETTINGS MODAL (With Profile Picture) */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Change Password</h2>
+              <h2 className="text-2xl font-bold text-white">Settings</h2>
               <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl">✕</button>
             </div>
             
             {settingsError && <p className="text-red-400 mb-4 text-sm text-center">{settingsError}</p>}
             {settingsSuccess && <p className="text-green-400 mb-4 text-sm text-center">{settingsSuccess}</p>}
             
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+            {/* Profile Picture Section */}
+            <div className="flex flex-col items-center mb-6">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl overflow-hidden mb-3 ${profilePic ? 'bg-transparent' : getAvatarColor(username)}`}>
+                {profilePic ? (
+                  <img src={`https://tubonge-backend-0d7b.onrender.com${profilePic}`} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  username.charAt(0).toUpperCase()
+                )}
+              </div>
+              <label 
+                htmlFor="profile-pic-upload" 
+                className="cursor-pointer text-sm text-indigo-400 hover:text-indigo-300 font-bold transition"
+              >
+                {uploadingPic ? 'Uploading...' : 'Change Profile Picture'}
+              </label>
               <input 
-                type="password" 
-                placeholder="Current Password" 
-                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
-                value={oldPassword} 
-                onChange={e => setOldPassword(e.target.value)} 
-                required 
+                id="profile-pic-upload" 
+                type="file" 
+                accept="image/*" 
+                onChange={handleProfilePicUpload} 
+                className="hidden" 
               />
-              <input 
-                type="password" 
-                placeholder="New Password" 
-                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
-                value={newPassword} 
-                onChange={e => setNewPassword(e.target.value)} 
-                required 
-              />
-              <input 
-                type="password" 
-                placeholder="Confirm New Password" 
-                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                required 
-              />
-              <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">
-                Update Password
-              </button>
-            </form>
+            </div>
+
+            <div className="border-t border-slate-800 pt-4">
+              <h3 className="text-lg font-bold text-white mb-4">Change Password</h3>
+              <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                <input 
+                  type="password" 
+                  placeholder="Current Password" 
+                  className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                  value={oldPassword} 
+                  onChange={e => setOldPassword(e.target.value)} 
+                  required 
+                />
+                <input 
+                  type="password" 
+                  placeholder="New Password" 
+                  className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                  value={newPassword} 
+                  onChange={e => setNewPassword(e.target.value)} 
+                  required 
+                />
+                <input 
+                  type="password" 
+                  placeholder="Confirm New Password" 
+                  className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
+                  required 
+                />
+                <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition">
+                  Update Password
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -1175,28 +1265,35 @@ function App() {
 
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Current Members</h3>
             <div className="flex flex-col gap-2 max-h-60 overflow-y-auto custom-scrollbar">
-              {roomMembers.map((member, idx) => (
-                <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${getAvatarColor(member.username)}`}>
-                      {member.username.charAt(0).toUpperCase()}
+              {roomMembers.map((member, idx) => {
+                const memberPic = localStorage.getItem(`profile_pic_${member.username}`);
+                return (
+                  <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold overflow-hidden ${memberPic ? 'bg-transparent' : getAvatarColor(member.username)}`}>
+                        {memberPic ? (
+                          <img src={`https://tubonge-backend-0d7b.onrender.com${memberPic}`} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          member.username.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <span className="text-sm text-slate-200">{member.username}</span>
+                      {member.role === 'admin' && (
+                        <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Admin</span>
+                      )}
                     </div>
-                    <span className="text-sm text-slate-200">{member.username}</span>
-                    {member.role === 'admin' && (
-                      <span className="text-[10px] bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Admin</span>
+                    
+                    {member.username !== username && (
+                      <button 
+                        onClick={() => handleRemoveMember(member.username)}
+                        className="text-red-400 hover:text-red-300 text-xs font-bold transition"
+                      >
+                        Remove
+                      </button>
                     )}
                   </div>
-                  
-                  {member.username !== username && (
-                    <button 
-                      onClick={() => handleRemoveMember(member.username)}
-                      className="text-red-400 hover:text-red-300 text-xs font-bold transition"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
